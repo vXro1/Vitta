@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+        Window-level theme only: sets the launch background and status/nav
+        bar color before Compose takes over. All real theming (colors, type,
+        shapes) lives in ui/theme/Theme.kt and is applied by VittaTheme.
+    -->
+    <style name="Theme.Vitta" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:statusBarColor">@color/vitta_bridge_background</item>
+        <item name="android:navigationBarColor">@color/vitta_bridge_background</item>
+        <item name="android:windowBackground">@color/vitta_bridge_background</item>
+        <item name="android:windowLightStatusBar">true</item>
+    </style>
+</resources>

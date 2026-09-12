@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+        Bridge colors for the small set of XML resources Android still
+        requires outside Compose (manifest theme, launcher icon background).
+        The real, single source of truth for every color is
+        ui/theme/Color.kt — do not add colors here for use inside Composables.
+    -->
+    <color name="vitta_bridge_primary">#778661</color>
+    <color name="vitta_bridge_background">#F9F4EE</color>
+    <color name="vitta_bridge_on_primary">#F9F4EE</color>
+</resources>

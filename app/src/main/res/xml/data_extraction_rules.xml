@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<data-extraction-rules>
+    <cloud-backup>
+        <!-- No user data yet: this phase ships mock/local data only. -->
+    </cloud-backup>
+</data-extraction-rules>

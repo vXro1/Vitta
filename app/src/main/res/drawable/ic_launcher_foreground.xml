@@ -1,0 +1,35 @@
+<!--
+    The real Vitta logo mark (from assets/vitta/logo.svg), hand-converted to
+    a VectorDrawable because it is simple enough (5 flat-fill paths, single
+    color) to keep 1:1 fidelity — unlike the richer illustrated icons, which
+    are loaded via Coil instead (see README_RECURSOS.md).
+    Original viewBox: 0 0 79 106, scaled/centered into the 108x108 icon grid
+    with the standard ~66% safe-zone inset for adaptive icons.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="79"
+    android:viewportHeight="106">
+    <group
+        android:translateX="9.5"
+        android:translateY="23"
+        android:scaleX="0.84"
+        android:scaleY="0.84">
+        <path
+            android:fillColor="#2D403E"
+            android:pathData="M33.5,43.5C41,50.5 42.5,55.5 42.5,68C30.3694,70 19.3305,68.0525 12.428,59.521C5.52542,50.9894 7,49 6,35.5C24.1958,37.5 26,36.5 33.5,43.5Z" />
+        <path
+            android:fillColor="#2D403E"
+            android:pathData="M38,89H42.5V92H38V89Z" />
+        <path
+            android:fillColor="#2D403E"
+            android:pathData="M38.5,89.5H42V92.5H38.5V89.5Z" />
+        <path
+            android:fillColor="#2D403E"
+            android:pathData="M37.0796,65.5C37.0796,65.5 42.5,60 42.5,64.5C42.5,69 43,91.7126 43,91.7126L37.0796,91.7126V65.5Z" />
+        <path
+            android:fillColor="#2D403E"
+            android:pathData="M62.9979,47.305C60.0422,56.0856 43.6604,62.3716 43.6604,62.3716C43.6604,62.3716 38.0445,46.1794 42.5719,38.0928C46.352,31.3411 59.4249,26.2713 59.4249,26.2713C59.4249,26.2713 65.5521,39.7171 62.9979,47.305Z" />
+    </group>
+</vector>
