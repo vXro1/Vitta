@@ -1,4 +1,4 @@
-package com.vitta.app.ui.components.habits
+package com.vitta.app.ui.screens.habits
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable

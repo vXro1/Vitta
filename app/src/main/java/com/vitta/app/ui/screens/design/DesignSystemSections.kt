@@ -15,7 +15,6 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -54,9 +53,9 @@ import com.vitta.app.ui.components.feedback.VittaToast
 import com.vitta.app.ui.components.forms.VittaDaySelector
 import com.vitta.app.ui.components.forms.VittaSwitchRow
 import com.vitta.app.ui.components.forms.VittaTextField
-import com.vitta.app.ui.components.habits.VittaHabitDoneIndicator
-import com.vitta.app.ui.components.habits.VittaHabitRow
-import com.vitta.app.ui.components.habits.VittaWaterTracker
+import com.vitta.app.ui.screens.habits.VittaHabitDoneIndicator
+import com.vitta.app.ui.screens.habits.VittaHabitRow
+import com.vitta.app.ui.screens.habits.VittaWaterTracker
 import com.vitta.app.ui.components.mascot.MascotSize
 import com.vitta.app.ui.components.mascot.MascotState
 import com.vitta.app.ui.components.mascot.VittaMascot

@@ -1,6 +1,6 @@
 package com.vitta.app.data.mock
 
-import com.vitta.app.ui.components.habits.HabitIcon
+import com.vitta.app.ui.screens.habits.HabitIcon
 import com.vitta.app.ui.components.mascot.MascotState
 import com.vitta.app.ui.components.progress.Insignia
 
