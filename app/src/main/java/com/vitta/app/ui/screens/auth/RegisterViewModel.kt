@@ -13,11 +13,14 @@ data class RegisterUiState(
     val nombre: String = "",
     val correo: String = "",
     val password: String = "",
+    val confirmPassword: String = "",
     val nombreError: String? = null,
     val correoError: String? = null,
     val passwordError: String? = null,
+    val confirmPasswordError: String? = null,
     val generalError: String? = null,
-    val isLoading: Boolean = false
+    val isLoading: Boolean = false,
+    val justRegistered: Boolean = false
 )
 
 class RegisterViewModel(private val repository: AuthRepository) : ViewModel() {
@@ -34,7 +37,11 @@ class RegisterViewModel(private val repository: AuthRepository) : ViewModel() {
     }
 
     fun onPasswordChange(value: String) {
-        _uiState.value = _uiState.value.copy(password = value, passwordError = null, generalError = null)
+        _uiState.value = _uiState.value.copy(password = value, passwordError = null, confirmPasswordError = null, generalError = null)
+    }
+
+    fun onConfirmPasswordChange(value: String) {
+        _uiState.value = _uiState.value.copy(confirmPassword = value, confirmPasswordError = null, generalError = null)
     }
 
     fun register(onSuccess: () -> Unit) {
@@ -54,12 +61,18 @@ class RegisterViewModel(private val repository: AuthRepository) : ViewModel() {
             state.password.length < 8 -> "Mínimo 8 caracteres"
             else -> null
         }
+        val confirmPasswordError = when {
+            state.confirmPassword.isBlank() -> "Repite tu contraseña"
+            state.confirmPassword != state.password -> "Las contraseñas no coinciden"
+            else -> null
+        }
 
-        if (nombreError != null || correoError != null || passwordError != null) {
+        if (nombreError != null || correoError != null || passwordError != null || confirmPasswordError != null) {
             _uiState.value = state.copy(
                 nombreError = nombreError,
                 correoError = correoError,
-                passwordError = passwordError
+                passwordError = passwordError,
+                confirmPasswordError = confirmPasswordError
             )
             return
         }
@@ -68,8 +81,9 @@ class RegisterViewModel(private val repository: AuthRepository) : ViewModel() {
         viewModelScope.launch {
             when (val result = repository.register(state.nombre, state.correo, state.password)) {
                 is AuthResult.Success -> {
-                    _uiState.value = _uiState.value.copy(isLoading = false)
-                    onSuccess()
+                    // Mostramos el toast de éxito; la navegación real la
+                    // dispara la pantalla después de un par de segundos.
+                    _uiState.value = _uiState.value.copy(isLoading = false, justRegistered = true)
                 }
                 AuthResult.EmailTaken -> {
                     _uiState.value = _uiState.value.copy(

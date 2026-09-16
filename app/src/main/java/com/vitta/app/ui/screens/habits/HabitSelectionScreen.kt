@@ -28,7 +28,7 @@ import com.vitta.app.ui.theme.VittaTextStyles
 @Composable
 fun HabitSelectionScreen(
     onContinue: (List<PredefinedHabit>) -> Unit,
-    onCreateCustom: () -> Unit
+    onCreateCustom: (List<PredefinedHabit>) -> Unit
 ) {
     val viewModel: HabitSelectionViewModel = viewModel()
     val state by viewModel.uiState.collectAsState()
@@ -89,7 +89,10 @@ fun HabitSelectionScreen(
                 )
             }
             item(span = { GridItemSpan(2) }) {
-                VittaOutlinedButton(text = "+  Crear un hábito propio", onClick = onCreateCustom)
+                VittaOutlinedButton(
+                    text = "+  Crear un hábito propio",
+                    onClick = { onCreateCustom(viewModel.selectedHabits()) }
+                )
             }
         }
 

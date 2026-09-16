@@ -17,63 +17,29 @@ class AuthRepository(private val tokenManager: TokenManager) {
 
     suspend fun login(correo: String, password: String): AuthResult {
         return try {
-            val response = ApiClient.authApi.login(
-                LoginRequest(correo, password)
-            )
-
+            val response = ApiClient.authApi.login(LoginRequest(correo, password))
             tokenManager.saveToken(response.token)
-
+            tokenManager.saveNombre(response.usuario.nombre)
             AuthResult.Success(response.usuario.nombre)
-
         } catch (e: HttpException) {
-
-            if (e.code() == 401) {
-                AuthResult.InvalidCredentials
-            } else {
-                AuthResult.OtherError(
-                    "Error del servidor. Intenta de nuevo."
-                )
-            }
-
+            if (e.code() == 401) AuthResult.InvalidCredentials
+            else AuthResult.OtherError("Error del servidor. Intenta de nuevo.")
         } catch (e: Exception) {
-
-            AuthResult.OtherError(
-                "No se pudo conectar. Revisa tu conexión."
-            )
+            AuthResult.OtherError("No se pudo conectar. Revisa tu conexión.")
         }
     }
 
-    suspend fun register(
-        nombre: String,
-        correo: String,
-        password: String
-    ): AuthResult {
-
+    suspend fun register(nombre: String, correo: String, password: String): AuthResult {
         return try {
-
-            val response = ApiClient.authApi.register(
-                RegisterRequest(nombre, correo, password)
-            )
-
+            val response = ApiClient.authApi.register(RegisterRequest(nombre, correo, password))
             tokenManager.saveToken(response.token)
-
+            tokenManager.saveNombre(response.usuario.nombre)
             AuthResult.Success(response.usuario.nombre)
-
         } catch (e: HttpException) {
-
-            if (e.code() == 409) {
-                AuthResult.EmailTaken
-            } else {
-                AuthResult.OtherError(
-                    "Error del servidor. Intenta de nuevo."
-                )
-            }
-
+            if (e.code() == 409) AuthResult.EmailTaken
+            else AuthResult.OtherError("Error del servidor. Intenta de nuevo.")
         } catch (e: Exception) {
-
-            AuthResult.OtherError(
-                "No se pudo conectar. Revisa tu conexión."
-            )
+            AuthResult.OtherError("No se pudo conectar. Revisa tu conexión.")
         }
     }
 }

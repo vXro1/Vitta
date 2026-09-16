@@ -5,6 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import com.vitta.app.navigation.VittaNavHost
@@ -21,7 +22,11 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = VittaColorRoles.background
                 ) {
-                    VittaNavHost()
+                    VittaNavHost(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .systemBarsPadding()
+                    )
                 }
             }
         }

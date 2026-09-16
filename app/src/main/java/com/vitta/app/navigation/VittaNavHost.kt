@@ -1,28 +1,37 @@
 package com.vitta.app.navigation
 
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.vitta.app.data.local.TokenManager
 import com.vitta.app.data.mock.PredefinedHabit
+import com.vitta.app.data.repository.HabitRepository
 import com.vitta.app.data.repository.HabitsResult
 import com.vitta.app.ui.screens.auth.LoginScreen
 import com.vitta.app.ui.screens.auth.RegisterScreen
+import com.vitta.app.ui.screens.design.DesignSystemScreen
+import com.vitta.app.ui.screens.habits.CustomHabitScreen
 import com.vitta.app.ui.screens.habits.HabitConfigScreen
 import com.vitta.app.ui.screens.habits.HabitSelectionScreen
 import com.vitta.app.ui.screens.home.FirstHabitTeaserScreen
 import com.vitta.app.ui.screens.onboarding.OnboardingScreen
+import kotlinx.coroutines.flow.first
 
 object VittaRoutes {
     const val Onboarding = "onboarding"
     const val Login = "login"
     const val Register = "register"
-    const val HomeGate = "home_gate"       // decide si mostrar el teaser o ya hay hábitos
+    const val HomeGate = "home_gate"
     const val FirstHabitTeaser = "first_habit_teaser"
     const val HabitSelection = "habit_selection"
     const val HabitConfig = "habit_config"
+    const val CustomHabit = "custom_habit"
+    const val DesignSystem = "design_system" // placeholder de "Home" hasta que exista la pantalla real
 }
 
 @Composable
@@ -31,9 +40,7 @@ fun VittaNavHost(
     navController: NavHostController = rememberNavController(),
     startDestination: String = VittaRoutes.Onboarding
 ) {
-    // Guarda temporalmente los hábitos elegidos entre HabitSelection y
-    // HabitConfig — más adelante, cuando exista Home real, esto se puede
-    // mover a un ViewModel compartido con scope de navegación.
+    val context = LocalContext.current
     var pendingHabits by remember { mutableStateOf<List<PredefinedHabit>>(emptyList()) }
 
     NavHost(navController = navController, startDestination = startDestination, modifier = modifier) {
@@ -70,37 +77,30 @@ fun VittaNavHost(
             )
         }
 
-        // Pantalla "invisible": consulta si el usuario ya tiene hábitos y
-        // decide a cuál pantalla mandarlo. No dibuja nada propio.
+        // Consulta si el usuario ya tiene hábitos y decide a dónde mandarlo.
+        // Con hábitos → placeholder de Home. Sin hábitos → pantalla "primer día".
         composable(VittaRoutes.HomeGate) {
-            val repository = remember { com.vitta.app.data.repository.HabitRepository() }
+            val repository = remember { HabitRepository() }
             LaunchedEffect(Unit) {
-                when (val result = repository.listHabits()) {
-                    is HabitsResult.Success -> {
-                        val destination = if (result.habits.isEmpty()) {
-                            VittaRoutes.FirstHabitTeaser
-                        } else {
-                            VittaRoutes.FirstHabitTeaser // TODO: cambiar por Home real cuando exista
-                        }
-                        navController.navigate(destination) {
-                            popUpTo(VittaRoutes.HomeGate) { inclusive = true }
-                        }
-                    }
-                    is HabitsResult.Error -> {
-                        // Si falla la consulta (ej. sin internet), no dejamos
-                        // a la usuaria atascada: la mandamos igual al teaser.
-                        navController.navigate(VittaRoutes.FirstHabitTeaser) {
-                            popUpTo(VittaRoutes.HomeGate) { inclusive = true }
-                        }
-                    }
+                val destination = when (val result = repository.listHabits()) {
+                    is HabitsResult.Success ->
+                        if (result.habits.isEmpty()) VittaRoutes.FirstHabitTeaser else VittaRoutes.DesignSystem
+                    is HabitsResult.Error -> VittaRoutes.FirstHabitTeaser
+                }
+                navController.navigate(destination) {
+                    popUpTo(VittaRoutes.HomeGate) { inclusive = true }
                 }
             }
-            androidx.compose.material3.CircularProgressIndicator()
+            CircularProgressIndicator()
         }
 
         composable(VittaRoutes.FirstHabitTeaser) {
+            var userName by remember { mutableStateOf("") }
+            LaunchedEffect(Unit) {
+                userName = TokenManager(context).nombreFlow.first() ?: ""
+            }
             FirstHabitTeaserScreen(
-                userName = "", // TODO: pásale el nombre real cuando lo tengamos guardado localmente
+                userName = userName,
                 onChooseFirstHabit = { navController.navigate(VittaRoutes.HabitSelection) }
             )
         }
@@ -111,7 +111,7 @@ fun VittaNavHost(
                     pendingHabits = habits
                     navController.navigate(VittaRoutes.HabitConfig)
                 },
-                onCreateCustom = { /* TODO: pantalla de hábito propio, la armamos después */ }
+                onCreateCustom = { navController.navigate(VittaRoutes.CustomHabit) }
             )
         }
 
@@ -119,14 +119,54 @@ fun VittaNavHost(
             HabitConfigScreen(
                 selectedHabits = pendingHabits,
                 onAllSaved = {
-                    // TODO: navegar al Home real cuando exista. Por ahora
-                    // volvemos al teaser, que ya no debería reaparecer
-                    // porque listHabits() ya no estará vacío.
-                    navController.navigate(VittaRoutes.HomeGate) {
-                        popUpTo(0)
-                    }
+                    navController.navigate(VittaRoutes.HomeGate) { popUpTo(0) }
+                },
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(VittaRoutes.CustomHabit) {
+            CustomHabitScreen(
+                onSaved = {
+                    navController.navigate(VittaRoutes.HomeGate) { popUpTo(0) }
+                },
+                onBack = { navController.popBackStack() }
+            )
+        }
+        composable(VittaRoutes.HabitSelection) {
+            HabitSelectionScreen(
+                onContinue = { habits ->
+                    pendingHabits = habits
+                    navController.navigate(VittaRoutes.HabitConfig)
+                },
+                onCreateCustom = { alreadySelected ->
+                    pendingHabits = alreadySelected
+                    navController.navigate(VittaRoutes.CustomHabit)
                 }
             )
+        }
+
+        composable(VittaRoutes.CustomHabit) {
+            CustomHabitScreen(
+                onSaved = {
+                    // Si quedaban predefinidos ya marcados antes de crear el
+                    // personalizado, ahora sí les preguntamos meta/frecuencia.
+                    if (pendingHabits.isNotEmpty()) {
+                        navController.navigate(VittaRoutes.HabitConfig)
+                    } else {
+                        navController.navigate(VittaRoutes.HomeGate) { popUpTo(0) }
+                    }
+                },
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(VittaRoutes.DesignSystem) {
+            var userName by remember { mutableStateOf("") }
+            LaunchedEffect(Unit) {
+                userName = com.vitta.app.data.local.TokenManager(context).nombreFlow.first() ?: ""
+            }
+            com.vitta.app.ui.screens.home.ChecklistScreen(userName = userName)
         }
     }
 }

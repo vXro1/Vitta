@@ -12,14 +12,23 @@ private val Context.dataStore by preferencesDataStore(name = "vitta_prefs")
 class TokenManager(private val context: Context) {
 
     private val tokenKey = stringPreferencesKey("jwt_token")
+    private val nombreKey = stringPreferencesKey("user_nombre")
 
     val tokenFlow: Flow<String?> = context.dataStore.data.map { it[tokenKey] }
+    val nombreFlow: Flow<String?> = context.dataStore.data.map { it[nombreKey] }
 
     suspend fun saveToken(token: String) {
         context.dataStore.edit { it[tokenKey] = token }
     }
 
+    suspend fun saveNombre(nombre: String) {
+        context.dataStore.edit { it[nombreKey] = nombre }
+    }
+
     suspend fun clearToken() {
-        context.dataStore.edit { it.remove(tokenKey) }
+        context.dataStore.edit {
+            it.remove(tokenKey)
+            it.remove(nombreKey)
+        }
     }
 }

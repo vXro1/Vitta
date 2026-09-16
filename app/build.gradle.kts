@@ -66,7 +66,7 @@ dependencies {
     implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
     implementation("androidx.datastore:datastore-preferences:1.1.1")
     implementation("androidx.compose.material:material-icons-extended:1.7.5")
-
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.2")
     // SVG-first image loading: Vitta's habit icons, badges and mascot
     // illustrations are rich multi-color SVGs (not single-tint glyphs), so
     // they are rendered with Coil instead of being hand-converted to
