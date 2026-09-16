@@ -57,10 +57,7 @@ fun OnboardingScreen(onFinish: () -> Unit) {
                     VittaTextButton(text = "Omitir", onClick = onFinish)
                 }
             }
-            VittaTextButton(text = "Omitir", onClick = {
-                android.util.Log.d("VittaDebug", "Omitir tocado")
-                onFinish()
-            })
+
 
             HorizontalPager(state = pagerState, modifier = Modifier.weight(1f)) { page ->
                 when (page) {
