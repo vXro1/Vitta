@@ -2,12 +2,6 @@ package com.vitta.app.ui.components.auth
 
 import android.provider.Settings
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -34,7 +28,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
+import kotlinx.coroutines.delay
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -317,6 +316,10 @@ private val AuthBubbles = listOf(
     AuthBubble(0.20f, 0.10f, 12.dp, VittaColors.GreenPale.copy(alpha = 0.6f), 6.dp, 12.dp, 2, 4.4f)
 )
 
+/** Duración de una vuelta completa de las burbujas y cada cuánto se actualizan. */
+private const val BubbleCycleMillis = 22_000L
+private const val BubbleFrameMillis = 100L
+
 /** True si el usuario desactivó/redujo animaciones en Ajustes > Accesibilidad. */
 @Composable
 private fun rememberReduceMotion(): Boolean {
@@ -339,22 +342,28 @@ fun VittaAuthBubbles(modifier: Modifier = Modifier) {
     val reduceMotion = rememberReduceMotion()
     val density = LocalDensity.current
 
-    val time: State<Float> = if (reduceMotion) {
-        remember { mutableFloatStateOf(0f) }
-    } else {
-        rememberInfiniteTransition(label = "authBubbles").animateFloat(
-            initialValue = 0f,
-            targetValue = (2 * PI).toFloat(),
-            animationSpec = infiniteRepeatable(
-                animation = tween(durationMillis = 22_000, easing = LinearEasing),
-                repeatMode = RepeatMode.Restart
-            ),
-            label = "authBubblesTime"
-        )
+    // Antes: rememberInfiniteTransition → redibujaba a 60 fps sin parar
+    // (medido en emulador: ~69 % de CPU en el Login). Ahora el tiempo
+    // avanza ~10 veces por segundo, que a esta velocidad (≈10 dp en 22 s)
+    // se ve igual de fluido, y se detiene si la pantalla no está activa.
+    val time = remember { mutableFloatStateOf(0f) }
+    val lifecycleOwner = LocalLifecycleOwner.current
+    LaunchedEffect(reduceMotion, lifecycleOwner) {
+        if (reduceMotion) return@LaunchedEffect
+        val cycleNanos = BubbleCycleMillis * 1_000_000L
+        lifecycleOwner.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            while (true) {
+                val phase = (System.nanoTime() % cycleNanos).toFloat() / cycleNanos
+                time.floatValue = phase * (2 * PI).toFloat()
+                delay(BubbleFrameMillis)
+            }
+        }
     }
 
-    Canvas(modifier = modifier.clearAndSetSemantics { }) {
-        val t = time.value
+    // graphicsLayer aísla las burbujas en su propia capa: al moverse solo se
+    // vuelve a dibujar esta capa, no el formulario que está encima.
+    Canvas(modifier = modifier.graphicsLayer().clearAndSetSemantics { }) {
+        val t = time.floatValue
         AuthBubbles.forEach { bubble ->
             val angle = t * bubble.speed + bubble.phase
             val dx = with(density) { bubble.driftX.toPx() } * sin(angle)

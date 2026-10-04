@@ -40,6 +40,8 @@ import androidx.compose.ui.unit.dp
 import com.vitta.app.R
 import com.vitta.app.ui.components.auth.VittaAuthErrorBanner
 import com.vitta.app.ui.components.buttons.VittaPrimaryButton
+import com.vitta.app.ui.components.common.VittaAssetImage
+import com.vitta.app.ui.components.common.VittaIconAssets
 import com.vitta.app.ui.components.mascot.MascotSize
 import com.vitta.app.ui.components.mascot.MascotState
 import com.vitta.app.ui.components.mascot.VittaMascot
@@ -249,14 +251,15 @@ private fun StatsRow(currentStreak: Int, bestStreak: Int, activeHabits: Int) {
         modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
         horizontalArrangement = Arrangement.spacedBy(VittaSpacing.Sm)
     ) {
-        StatTile(R.drawable.ic8_fire_element, "$currentStreak", if (currentStreak == 1) "día de racha" else "días de racha", Modifier.weight(1f))
-        StatTile(R.drawable.ic8_trophy, "$bestStreak", "mejor racha", Modifier.weight(1f))
-        StatTile(R.drawable.ic8_checklist, "$activeHabits", if (activeHabits == 1) "hábito activo" else "hábitos activos", Modifier.weight(1f))
+        // La llama de racha es la ilustración propia de Vitta (no de Icons8).
+        StatTile({ StreakFlame(28.dp) }, "$currentStreak", if (currentStreak == 1) "día de racha" else "días de racha", Modifier.weight(1f))
+        StatTile({ StatIcon(R.drawable.ic8_trophy) }, "$bestStreak", "mejor racha", Modifier.weight(1f))
+        StatTile({ StatIcon(R.drawable.ic8_checklist) }, "$activeHabits", if (activeHabits == 1) "hábito activo" else "hábitos activos", Modifier.weight(1f))
     }
 }
 
 @Composable
-private fun StatTile(icon: Int, value: String, label: String, modifier: Modifier) {
+private fun StatTile(icon: @Composable () -> Unit, value: String, label: String, modifier: Modifier) {
     Column(
         modifier = modifier
             .fillMaxHeight()
@@ -267,11 +270,22 @@ private fun StatTile(icon: Int, value: String, label: String, modifier: Modifier
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Image(painterResource(icon), contentDescription = null, modifier = Modifier.size(28.dp), contentScale = ContentScale.Fit)
+        icon()
         Spacer(Modifier.height(VittaSpacing.Xs))
         Text(value, style = VittaTextStyles.heading, color = VittaColorRoles.textPrimary)
         Text(label, style = VittaTextStyles.caption, color = VittaColorRoles.textMuted, textAlign = TextAlign.Center)
     }
+}
+
+@Composable
+private fun StatIcon(icon: Int) {
+    Image(painterResource(icon), contentDescription = null, modifier = Modifier.size(28.dp), contentScale = ContentScale.Fit)
+}
+
+/** Llama de racha creada para Vitta (`assets/vitta/icons/icon_streak_flame.svg`). Decorativa. */
+@Composable
+private fun StreakFlame(size: androidx.compose.ui.unit.Dp) {
+    VittaAssetImage(assetPath = VittaIconAssets.streakFlame, contentDescription = null, size = size)
 }
 
 @Composable
@@ -352,7 +366,7 @@ private fun HabitDashboardCard(card: HabitCardUiState, viewModel: ChecklistViewM
                 )
                 if (card.streakActual > 0) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Image(painterResource(R.drawable.ic8_fire_element), contentDescription = null, modifier = Modifier.size(14.dp))
+                        StreakFlame(16.dp)
                         Spacer(Modifier.width(VittaSpacing.Xxs))
                         Text(
                             "${card.streakActual} ${if (card.streakActual == 1) "día" else "días"} de racha",
