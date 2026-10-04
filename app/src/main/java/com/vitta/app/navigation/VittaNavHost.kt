@@ -1,26 +1,35 @@
 package com.vitta.app.navigation
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.vitta.app.data.local.TokenManager
 import com.vitta.app.data.mock.PredefinedHabit
 import com.vitta.app.data.repository.HabitRepository
 import com.vitta.app.data.repository.HabitsResult
 import com.vitta.app.ui.screens.auth.LoginScreen
 import com.vitta.app.ui.screens.auth.RegisterScreen
-import com.vitta.app.ui.screens.design.DesignSystemScreen
 import com.vitta.app.ui.screens.habits.CustomHabitScreen
+import com.vitta.app.ui.screens.habits.EditHabitScreen
 import com.vitta.app.ui.screens.habits.HabitConfigScreen
 import com.vitta.app.ui.screens.habits.HabitSelectionScreen
 import com.vitta.app.ui.screens.home.FirstHabitTeaserScreen
+import com.vitta.app.ui.screens.home.MainScreen
 import com.vitta.app.ui.screens.onboarding.OnboardingScreen
+import com.vitta.app.ui.theme.VittaColorRoles
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 
 object VittaRoutes {
     const val Onboarding = "onboarding"
@@ -31,8 +40,14 @@ object VittaRoutes {
     const val HabitSelection = "habit_selection"
     const val HabitConfig = "habit_config"
     const val CustomHabit = "custom_habit"
-    const val DesignSystem = "design_system" // placeholder de "Home" hasta que exista la pantalla real
+    const val EditHabit = "edit_habit/{habitId}"
+    const val Home = "home" // Inicio + Yo (antes: placeholder "design_system")
+
+    fun editHabit(habitId: Int) = "edit_habit/$habitId"
 }
+
+/** Clave en el SavedStateHandle de Home para pedir que recargue al volver. */
+private const val RefreshHomeKey = "refresh_home"
 
 @Composable
 fun VittaNavHost(
@@ -41,7 +56,15 @@ fun VittaNavHost(
     startDestination: String = VittaRoutes.Onboarding
 ) {
     val context = LocalContext.current
+    val tokenManager = remember { TokenManager(context) }
+    val scope = rememberCoroutineScope()
     var pendingHabits by remember { mutableStateOf<List<PredefinedHabit>>(emptyList()) }
+
+    // Tras crear hábitos se vuelve a Home limpiando la pila (no se puede "volver" al formulario ya guardado).
+    val goHomeAfterSaving = {
+        pendingHabits = emptyList()
+        navController.navigate(VittaRoutes.HomeGate) { popUpTo(0) }
+    }
 
     NavHost(navController = navController, startDestination = startDestination, modifier = modifier) {
 
@@ -62,7 +85,14 @@ fun VittaNavHost(
                         popUpTo(VittaRoutes.Login) { inclusive = true }
                     }
                 },
-                onNavigateToRegister = { navController.navigate(VittaRoutes.Register) }
+                onNavigateToRegister = { navController.navigate(VittaRoutes.Register) },
+                // El onboarding se saca de la pila al terminarlo, así que el
+                // regreso desde Login lo vuelve a abrir en vez de cerrar la app.
+                onBack = {
+                    navController.navigate(VittaRoutes.Onboarding) {
+                        popUpTo(VittaRoutes.Login) { inclusive = true }
+                    }
+                }
             )
         }
 
@@ -78,26 +108,28 @@ fun VittaNavHost(
         }
 
         // Consulta si el usuario ya tiene hábitos y decide a dónde mandarlo.
-        // Con hábitos → placeholder de Home. Sin hábitos → pantalla "primer día".
+        // Con hábitos → Inicio. Sin hábitos → pantalla "primer día".
         composable(VittaRoutes.HomeGate) {
             val repository = remember { HabitRepository() }
             LaunchedEffect(Unit) {
                 val destination = when (val result = repository.listHabits()) {
                     is HabitsResult.Success ->
-                        if (result.habits.isEmpty()) VittaRoutes.FirstHabitTeaser else VittaRoutes.DesignSystem
+                        if (result.habits.isEmpty()) VittaRoutes.FirstHabitTeaser else VittaRoutes.Home
                     is HabitsResult.Error -> VittaRoutes.FirstHabitTeaser
                 }
                 navController.navigate(destination) {
                     popUpTo(VittaRoutes.HomeGate) { inclusive = true }
                 }
             }
-            CircularProgressIndicator()
+            Box(Modifier.fillMaxSize().background(VittaColorRoles.background), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(color = VittaColorRoles.primary)
+            }
         }
 
         composable(VittaRoutes.FirstHabitTeaser) {
             var userName by remember { mutableStateOf("") }
             LaunchedEffect(Unit) {
-                userName = TokenManager(context).nombreFlow.first() ?: ""
+                userName = tokenManager.nombreFlow.first() ?: ""
             }
             FirstHabitTeaserScreen(
                 userName = userName,
@@ -105,34 +137,9 @@ fun VittaNavHost(
             )
         }
 
-        composable(VittaRoutes.HabitSelection) {
-            HabitSelectionScreen(
-                onContinue = { habits ->
-                    pendingHabits = habits
-                    navController.navigate(VittaRoutes.HabitConfig)
-                },
-                onCreateCustom = { navController.navigate(VittaRoutes.CustomHabit) }
-            )
-        }
-
-        composable(VittaRoutes.HabitConfig) {
-            HabitConfigScreen(
-                selectedHabits = pendingHabits,
-                onAllSaved = {
-                    navController.navigate(VittaRoutes.HomeGate) { popUpTo(0) }
-                },
-                onBack = { navController.popBackStack() }
-            )
-        }
-
-        composable(VittaRoutes.CustomHabit) {
-            CustomHabitScreen(
-                onSaved = {
-                    navController.navigate(VittaRoutes.HomeGate) { popUpTo(0) }
-                },
-                onBack = { navController.popBackStack() }
-            )
-        }
+        // Nota: antes HabitSelection y CustomHabit estaban registrados dos
+        // veces con callbacks distintos (Navigation usaba solo el último).
+        // Se dejó una sola definición, con el comportamiento que estaba activo.
         composable(VittaRoutes.HabitSelection) {
             HabitSelectionScreen(
                 onContinue = { habits ->
@@ -142,7 +149,16 @@ fun VittaNavHost(
                 onCreateCustom = { alreadySelected ->
                     pendingHabits = alreadySelected
                     navController.navigate(VittaRoutes.CustomHabit)
-                }
+                },
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(VittaRoutes.HabitConfig) {
+            HabitConfigScreen(
+                selectedHabits = pendingHabits,
+                onAllSaved = goHomeAfterSaving,
+                onBack = { navController.popBackStack() }
             )
         }
 
@@ -152,21 +168,57 @@ fun VittaNavHost(
                     // Si quedaban predefinidos ya marcados antes de crear el
                     // personalizado, ahora sí les preguntamos meta/frecuencia.
                     if (pendingHabits.isNotEmpty()) {
-                        navController.navigate(VittaRoutes.HabitConfig)
+                        navController.navigate(VittaRoutes.HabitConfig) {
+                            // El personalizado ya está guardado: no se puede volver a él.
+                            popUpTo(VittaRoutes.CustomHabit) { inclusive = true }
+                        }
                     } else {
-                        navController.navigate(VittaRoutes.HomeGate) { popUpTo(0) }
+                        goHomeAfterSaving()
                     }
                 },
                 onBack = { navController.popBackStack() }
             )
         }
 
-        composable(VittaRoutes.DesignSystem) {
+        composable(
+            route = VittaRoutes.EditHabit,
+            arguments = listOf(navArgument("habitId") { type = NavType.IntType })
+        ) { entry ->
+            val habitId = entry.arguments?.getInt("habitId") ?: return@composable
+            EditHabitScreen(
+                habitId = habitId,
+                onSaved = {
+                    navController.previousBackStackEntry?.savedStateHandle?.let { handle ->
+                        handle[RefreshHomeKey] = (handle.get<Int>(RefreshHomeKey) ?: 0) + 1
+                    }
+                    navController.popBackStack()
+                },
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(VittaRoutes.Home) { entry ->
             var userName by remember { mutableStateOf("") }
+            var userEmail by remember { mutableStateOf<String?>(null) }
             LaunchedEffect(Unit) {
-                userName = com.vitta.app.data.local.TokenManager(context).nombreFlow.first() ?: ""
+                userName = tokenManager.nombreFlow.first() ?: ""
+                userEmail = tokenManager.correoFlow.first()
             }
-            com.vitta.app.ui.screens.home.ChecklistScreen(userName = userName)
+            val refresh by entry.savedStateHandle.getStateFlow(RefreshHomeKey, 0).collectAsState()
+
+            MainScreen(
+                userName = userName,
+                userEmail = userEmail,
+                refreshRequests = refresh,
+                onAddHabit = { navController.navigate(VittaRoutes.HabitSelection) },
+                onEditHabit = { id -> navController.navigate(VittaRoutes.editHabit(id)) },
+                onLogout = {
+                    scope.launch {
+                        tokenManager.clearToken()
+                        navController.navigate(VittaRoutes.Login) { popUpTo(0) }
+                    }
+                }
+            )
         }
     }
 }

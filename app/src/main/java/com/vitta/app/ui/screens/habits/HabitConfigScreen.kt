@@ -1,22 +1,22 @@
 package com.vitta.app.ui.screens.habits
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.vitta.app.data.mock.PredefinedHabit
+import com.vitta.app.data.mock.suggestedUnits
+import com.vitta.app.ui.components.auth.VittaAuthErrorBanner
 import com.vitta.app.ui.components.buttons.VittaPrimaryButton
 import com.vitta.app.ui.theme.VittaColorRoles
-import com.vitta.app.ui.theme.VittaColors
 import com.vitta.app.ui.theme.VittaShapes
 import com.vitta.app.ui.theme.VittaSpacing
 import com.vitta.app.ui.theme.VittaTextStyles
@@ -33,190 +33,84 @@ fun HabitConfigScreen(
     val state by viewModel.uiState.collectAsState()
     val habit = state.currentHabit ?: return
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(VittaColorRoles.background)
-            .verticalScroll(rememberScrollState())
-            .padding(VittaSpacing.Lg)
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                "‹",
-                style = VittaTextStyles.displayLarge,
-                color = VittaColorRoles.textPrimary,
-                modifier = Modifier
-                    .clickable(onClick = onBack)
-                    .padding(end = VittaSpacing.Md)
-            )
-            Text("Nuevo hábito", style = VittaTextStyles.heading, color = VittaColorRoles.textPrimary)
-        }
-
-        Spacer(Modifier.height(VittaSpacing.Lg))
-
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            VittaHabitIconBubble(icon = habit.icon, bubbleSize = 52.dp)
-            Spacer(Modifier.width(VittaSpacing.Md))
-            Column {
-                Text(habit.nombre, style = VittaTextStyles.title, color = VittaColorRoles.textPrimary)
-                Text(
-                    "Hábito ${state.currentIndex + 1} de ${state.habits.size}",
-                    style = VittaTextStyles.body,
-                    color = VittaColorRoles.textMuted
-                )
+    HabitFormScaffold(
+        title = "Configura tu hábito",
+        subtitle = "Hábito ${state.currentIndex + 1} de ${state.habits.size}",
+        onBack = onBack,
+        bottomBar = {
+            state.errorMessage?.let {
+                VittaAuthErrorBanner(it)
+                Spacer(Modifier.height(VittaSpacing.Sm))
             }
-        }
-
-        Spacer(Modifier.height(VittaSpacing.Xxl))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text("Meta diaria", style = VittaTextStyles.subtitle, color = VittaColorRoles.textSecondary)
-            Text("Tipo: ${habit.metaUnidad}", style = VittaTextStyles.caption, color = VittaColorRoles.textMuted)
-        }
-
-        Spacer(Modifier.height(VittaSpacing.Sm))
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(VittaColors.Surface, VittaShapes.large)
-                .padding(horizontal = VittaSpacing.Xl, vertical = VittaSpacing.Xl),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            StepperCircleButton(symbol = "–", onClick = viewModel::onMetaDecrease)
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    "${state.metaValor}",
-                    style = VittaTextStyles.displayLarge,
-                    color = VittaColorRoles.textPrimary
-                )
-                Text(habit.metaUnidad, style = VittaTextStyles.body, color = VittaColorRoles.textMuted)
-            }
-            StepperCircleButton(symbol = "+", filled = true, onClick = viewModel::onMetaIncrease)
-        }
-
-        Spacer(Modifier.height(VittaSpacing.Xxl))
-        Text("Frecuencia", style = VittaTextStyles.subtitle, color = VittaColorRoles.textSecondary)
-        Spacer(Modifier.height(VittaSpacing.Sm))
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(VittaColors.SurfaceMuted, VittaShapes.pill)
-                .padding(4.dp)
-        ) {
-            FrequencyToggle("Todos los días", !state.diasEspecificos, Modifier.weight(1f)) {
-                viewModel.onFrequencyModeChange(false)
-            }
-            FrequencyToggle("Días específicos", state.diasEspecificos, Modifier.weight(1f)) {
-                viewModel.onFrequencyModeChange(true)
-            }
-        }
-
-        if (state.diasEspecificos) {
-            Spacer(Modifier.height(VittaSpacing.Md))
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                listOf("L", "M", "X", "J", "V", "S", "D").forEach { day ->
-                    val selected = day in state.selectedDays
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .background(
-                                if (selected) VittaColorRoles.primary else VittaColors.SurfaceVariant,
-                                CircleShape
-                            )
-                            .clickable { viewModel.toggleDay(day) },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            day,
-                            style = VittaTextStyles.body,
-                            color = if (selected) VittaColorRoles.background else VittaColorRoles.textSecondary
-                        )
-                    }
-                }
-            }
-        }
-
-        Spacer(Modifier.height(VittaSpacing.Xxl))
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(VittaColors.Surface, VittaShapes.large)
-                .padding(VittaSpacing.Lg),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column {
-                Text("Recordatorio", style = VittaTextStyles.subtitle, color = VittaColorRoles.textPrimary)
-                Text("Vitta te avisa a esta hora", style = VittaTextStyles.body, color = VittaColorRoles.textMuted)
-            }
-            Text(state.reminderTime, style = VittaTextStyles.title, color = VittaColors.OrangeAccent)
-        }
-
-        Spacer(Modifier.height(VittaSpacing.Sm))
-        Text(
-            "Crear un hábito no otorga VitaPuntos. Los puntos llegan cuando registras cumplimiento.",
-            style = VittaTextStyles.caption,
-            color = VittaColorRoles.textMuted
-        )
-
-        if (state.errorMessage != null) {
-            Spacer(Modifier.height(VittaSpacing.Sm))
-            Text(state.errorMessage ?: "", style = VittaTextStyles.body, color = VittaColors.Error)
-        }
-
-        Spacer(Modifier.height(VittaSpacing.Xxl))
-
-        if (state.isLoading) {
-            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = VittaColorRoles.primary)
-            }
-        } else {
             VittaPrimaryButton(
-                text = if (state.isLastHabit) "Guardar hábito" else "Guardar y siguiente",
+                text = when {
+                    state.isLoading -> "Guardando…"
+                    state.isLastHabit -> "Guardar hábito"
+                    else -> "Guardar y siguiente"
+                },
+                loading = state.isLoading,
                 onClick = { viewModel.saveCurrentAndAdvance(onAllSaved) }
             )
         }
-
-        Spacer(Modifier.height(VittaSpacing.Xl))
-    }
-}
-
-@Composable
-private fun StepperCircleButton(symbol: String, onClick: () -> Unit, filled: Boolean = false) {
-    Box(
-        modifier = Modifier
-            .size(48.dp)
-            .background(if (filled) VittaColorRoles.primary else VittaColors.SurfaceMuted, CircleShape)
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center
     ) {
-        Text(
-            symbol,
-            style = VittaTextStyles.heading,
-            color = if (filled) VittaColorRoles.background else VittaColorRoles.textPrimary
-        )
-    }
-}
+        if (state.habits.size > 1) {
+            LinearProgressIndicator(
+                progress = { (state.currentIndex + 1f) / state.habits.size },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(6.dp)
+                    .semantics { contentDescription = "Hábito ${state.currentIndex + 1} de ${state.habits.size}" },
+                color = VittaColorRoles.primary,
+                trackColor = VittaColorRoles.surfaceTint,
+                drawStopIndicator = {}
+            )
+        }
 
-@Composable
-private fun FrequencyToggle(text: String, selected: Boolean, modifier: Modifier, onClick: () -> Unit) {
-    Box(
-        modifier = modifier
-            .background(if (selected) VittaColors.Surface else VittaColors.SurfaceMuted, VittaShapes.pill)
-            .clickable(onClick = onClick)
-            .padding(vertical = VittaSpacing.Md),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text,
-            style = VittaTextStyles.button,
-            color = if (selected) VittaColorRoles.textPrimary else VittaColorRoles.textMuted
-        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(VittaColorRoles.surface, VittaShapes.large)
+                .border(1.dp, VittaColorRoles.border, VittaShapes.large)
+                .padding(VittaSpacing.Lg),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            VittaHabitIconBubble(icon = habit.icon, bubbleSize = 56.dp)
+            Spacer(Modifier.width(VittaSpacing.Md))
+            Column(Modifier.weight(1f)) {
+                Text(habit.nombre, style = VittaTextStyles.title, color = VittaColorRoles.textPrimary)
+                Text(habit.categoria, style = VittaTextStyles.bodySmall, color = VittaColorRoles.textMuted)
+            }
+        }
+
+        HabitFormSection(title = "Meta", step = 1, supportingText = "¿Cuánto quieres lograr cada vez?") {
+            HabitGoalInput(
+                cantidad = state.metaValor,
+                onCantidadChange = viewModel::onMetaValorChange,
+                unidad = state.metaUnidad,
+                onUnidadChange = viewModel::onMetaUnidadChange,
+                unitSuggestions = (listOf(habit.metaUnidad) + suggestedUnits).distinct(),
+                step = HabitTextFormat.stepFor(state.metaUnidad),
+                cantidadError = state.metaError,
+                unidadError = state.unidadError
+            )
+        }
+
+        HabitFormSection(title = "Frecuencia", step = 2) {
+            HabitFrequencySelector(
+                diasEspecificos = state.diasEspecificos,
+                onModeChange = viewModel::onFrequencyModeChange,
+                selectedDays = state.selectedDays,
+                onToggleDay = viewModel::toggleDay,
+                error = state.daysError
+            )
+        }
+
+        HabitFormSection(title = "Recordatorio", step = 3) {
+            HabitReminderTimeField(time = state.reminderTime, onTimeChange = viewModel::onReminderChange)
+            Spacer(Modifier.height(VittaSpacing.Sm))
+            HabitInfoNote(ReminderNotSavedNote)
+        }
+
+        HabitInfoNote("Crear un hábito no otorga VitaPuntos. Los puntos llegan cuando registras cumplimiento.")
     }
 }

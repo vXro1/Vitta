@@ -1,6 +1,5 @@
 package com.vitta.app.ui.theme
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
@@ -57,13 +56,15 @@ private val VittaDarkColorScheme = darkColorScheme(
  * content. Every screen and preview should be wrapped in this instead of
  * the raw `MaterialTheme`.
  *
- * @param useDarkTheme whether to use the derived dark scheme; defaults to
- *   the system setting. Vitta has no designed dark mode yet — see the class
- *   doc above.
+ * @param useDarkTheme whether to use the derived dark scheme. Defaults to
+ *   false: every Vitta screen paints explicit light colors, so following the
+ *   system dark mode only mixed dark Material defaults (dialogs, pickers,
+ *   text fields) into light screens and produced light-on-light text.
+ *   Switch back to `isSystemInDarkTheme()` once a real dark mode is designed.
  */
 @Composable
 fun VittaTheme(
-    useDarkTheme: Boolean = isSystemInDarkTheme(),
+    useDarkTheme: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val colorScheme = if (useDarkTheme) VittaDarkColorScheme else VittaLightColorScheme

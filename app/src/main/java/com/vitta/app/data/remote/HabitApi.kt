@@ -5,9 +5,11 @@ import com.vitta.app.data.remote.dto.CreateRecordRequest
 import com.vitta.app.data.remote.dto.HabitDto
 import com.vitta.app.data.remote.dto.RecordDto
 import com.vitta.app.data.remote.dto.StreakDto
+import com.vitta.app.data.remote.dto.UpdateHabitRequest
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
+import retrofit2.http.PUT
 import retrofit2.http.Path
 
 interface HabitApi {
@@ -16,6 +18,13 @@ interface HabitApi {
 
     @POST("habits")
     suspend fun createHabit(@Body body: CreateHabitRequest): HabitDto
+
+    @GET("habits/{id}")
+    suspend fun getHabit(@Path("id") habitId: Int): HabitDto
+
+    /** Backend: PUT /api/habits/:id — acepta nombre, meta y frecuencia (todos opcionales). */
+    @PUT("habits/{id}")
+    suspend fun updateHabit(@Path("id") habitId: Int, @Body body: UpdateHabitRequest): HabitDto
 
     @GET("habits/{id}/records")
     suspend fun listRecords(@Path("id") habitId: Int): List<RecordDto>

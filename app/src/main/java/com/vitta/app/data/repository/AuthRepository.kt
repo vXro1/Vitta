@@ -20,6 +20,7 @@ class AuthRepository(private val tokenManager: TokenManager) {
             val response = ApiClient.authApi.login(LoginRequest(correo, password))
             tokenManager.saveToken(response.token)
             tokenManager.saveNombre(response.usuario.nombre)
+            tokenManager.saveCorreo(response.usuario.correo)
             AuthResult.Success(response.usuario.nombre)
         } catch (e: HttpException) {
             if (e.code() == 401) AuthResult.InvalidCredentials
@@ -34,6 +35,7 @@ class AuthRepository(private val tokenManager: TokenManager) {
             val response = ApiClient.authApi.register(RegisterRequest(nombre, correo, password))
             tokenManager.saveToken(response.token)
             tokenManager.saveNombre(response.usuario.nombre)
+            tokenManager.saveCorreo(response.usuario.correo)
             AuthResult.Success(response.usuario.nombre)
         } catch (e: HttpException) {
             if (e.code() == 409) AuthResult.EmailTaken

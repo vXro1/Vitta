@@ -8,7 +8,10 @@ import com.vitta.app.data.repository.HabitRepository
 import com.vitta.app.data.repository.HabitsResult
 import com.vitta.app.data.repository.RecordsResult
 import com.vitta.app.data.repository.StreakResult
-import com.vitta.app.ui.screens.habits.HabitIcon
+import com.vitta.app.ui.components.icons.HabitIcon
+import com.vitta.app.ui.components.icons.HabitIcons
+import com.vitta.app.ui.screens.habits.HabitTextFormat
+import com.vitta.app.ui.screens.habits.WeekDays
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -21,9 +24,12 @@ import java.time.ZoneOffset
 
 data class HabitCardUiState(
     val habit: HabitDto,
-    val icon: HabitIcon?,
+    val icon: HabitIcon,
     val doneToday: Boolean,
     val streakActual: Int,
+    val streakMax: Int = 0,
+    /** false si la frecuencia es de días específicos y hoy no es uno de ellos. */
+    val scheduledToday: Boolean = true,
     val metaTarget: Int?,
     val metaUnidad: String,
     val esAgua: Boolean,
@@ -36,27 +42,12 @@ data class ChecklistUiState(
     val isLoading: Boolean = true,
     val errorMessage: String? = null,
     val cards: List<HabitCardUiState> = emptyList()
-)
-
-private fun parseMeta(metaTexto: String): Pair<Int?, String> {
-    val match = Regex("""\d+""").find(metaTexto)
-    val numero = match?.value?.toIntOrNull()
-    val unidad = if (match != null) metaTexto.removeRange(match.range).trim() else metaTexto
-    return numero to unidad
-}
-
-private fun iconForHabit(nombre: String): HabitIcon? {
-    val n = nombre.lowercase()
-    return when {
-        n.contains("agua") -> HabitIcon.Water
-        n.contains("dormir") || n.contains("sueño") || n.contains("descanso") -> HabitIcon.Sleep
-        n.contains("camin") || n.contains("paso") || n.contains("ejercicio") ||
-                n.contains("entrena") || n.contains("gym") || n.contains("deporte") -> HabitIcon.Walk
-        n.contains("yoga") || n.contains("medita") -> HabitIcon.Yoga
-        n.contains("leer") || n.contains("lectura") -> HabitIcon.Read
-        n.contains("comer") || n.contains("fruta") || n.contains("aliment") -> HabitIcon.Eat
-        else -> null
-    }
+) {
+    val todayCards: List<HabitCardUiState> get() = cards.filter { it.scheduledToday }
+    val otherCards: List<HabitCardUiState> get() = cards.filterNot { it.scheduledToday }
+    val doneToday: Int get() = todayCards.count { it.doneToday }
+    val bestCurrentStreak: Int get() = cards.maxOfOrNull { it.streakActual } ?: 0
+    val bestStreakEver: Int get() = cards.maxOfOrNull { maxOf(it.streakMax, it.streakActual) } ?: 0
 }
 
 private fun stepFor(unidad: String): Int = when {
@@ -92,7 +83,7 @@ class ChecklistViewModel(
     }
 
     private suspend fun buildCard(habit: HabitDto): HabitCardUiState {
-        val (metaTarget, metaUnidad) = parseMeta(habit.meta)
+        val (metaTarget, metaUnidad) = HabitTextFormat.parseMeta(habit.meta)
         val today = Instant.now().atZone(ZoneOffset.UTC).toLocalDate()
 
         val doneToday = when (val records = repository.listRecords(habit.id)) {
@@ -102,16 +93,19 @@ class ChecklistViewModel(
             is RecordsResult.Error -> false
         }
 
-        val streakActual = when (val streak = repository.getStreak(habit.id)) {
-            is StreakResult.Success -> streak.streak.racha_actual
-            is StreakResult.Error -> 0
+        val streak = when (val streak = repository.getStreak(habit.id)) {
+            is StreakResult.Success -> streak.streak
+            is StreakResult.Error -> null
         }
+        val todayCode = WeekDays[java.time.LocalDate.now().dayOfWeek.value - 1].first
 
         return HabitCardUiState(
             habit = habit,
-            icon = iconForHabit(habit.nombre),
+            icon = HabitIcons.forHabitName(habit.nombre) ?: HabitIcons.Default,
             doneToday = doneToday,
-            streakActual = streakActual,
+            streakActual = streak?.racha_actual ?: 0,
+            streakMax = streak?.racha_maxima ?: 0,
+            scheduledToday = HabitTextFormat.isScheduledOn(habit.frecuencia, todayCode),
             metaTarget = metaTarget,
             metaUnidad = metaUnidad,
             esAgua = habit.nombre.contains("agua", ignoreCase = true),

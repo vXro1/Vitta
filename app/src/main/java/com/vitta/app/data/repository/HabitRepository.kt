@@ -6,6 +6,7 @@ import com.vitta.app.data.remote.dto.CreateRecordRequest
 import com.vitta.app.data.remote.dto.HabitDto
 import com.vitta.app.data.remote.dto.RecordDto
 import com.vitta.app.data.remote.dto.StreakDto
+import com.vitta.app.data.remote.dto.UpdateHabitRequest
 import retrofit2.HttpException
 
 sealed class HabitsResult {
@@ -16,6 +17,11 @@ sealed class HabitsResult {
 sealed class CreateHabitResult {
     object Success : CreateHabitResult()
     data class Error(val message: String) : CreateHabitResult()
+}
+
+sealed class HabitResult {
+    data class Success(val habit: HabitDto) : HabitResult()
+    data class Error(val message: String) : HabitResult()
 }
 
 sealed class RecordsResult {
@@ -50,6 +56,22 @@ class HabitRepository {
         CreateHabitResult.Error("No se pudo guardar \"$nombre\" (${e.code()})")
     } catch (e: Exception) {
         CreateHabitResult.Error("No se pudo conectar. Revisa tu conexión.")
+    }
+
+    suspend fun getHabit(habitId: Int): HabitResult = try {
+        HabitResult.Success(ApiClient.habitApi.getHabit(habitId))
+    } catch (e: HttpException) {
+        HabitResult.Error(if (e.code() == 404) "Este hábito ya no existe" else "No se pudo cargar el hábito (${e.code()})")
+    } catch (e: Exception) {
+        HabitResult.Error("No se pudo conectar. Revisa tu conexión.")
+    }
+
+    suspend fun updateHabit(habitId: Int, nombre: String, meta: String, frecuencia: String): HabitResult = try {
+        HabitResult.Success(ApiClient.habitApi.updateHabit(habitId, UpdateHabitRequest(nombre, meta, frecuencia)))
+    } catch (e: HttpException) {
+        HabitResult.Error("No se pudieron guardar los cambios (${e.code()})")
+    } catch (e: Exception) {
+        HabitResult.Error("No se pudo conectar. Revisa tu conexión.")
     }
 
     suspend fun listRecords(habitId: Int): RecordsResult = try {

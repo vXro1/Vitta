@@ -1,5 +1,6 @@
 package com.vitta.app.ui.screens.habits
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -7,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -14,12 +16,15 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.ui.draw.alpha
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import com.vitta.app.ui.components.icons.HabitIcon
+import com.vitta.app.ui.components.icons.HabitIcons
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.vitta.app.ui.components.common.VittaAssetImage
@@ -31,36 +36,30 @@ import com.vitta.app.ui.theme.VittaSpacing
 import com.vitta.app.ui.theme.VittaTextStyles
 import com.vitta.app.ui.theme.VittaTheme
 
-/** One of the seven habit-category illustrations shipped in `assets/vitta/icons/`. */
-enum class HabitIcon(internal val assetName: String) {
-    Water("agua-lleno"),
-    WaterEmpty("agua-vacio"),
-    Walk("caminar"),
-    Eat("comer"),
-    Sleep("dormir"),
-    Read("leer"),
-    Yoga("yoga")
-}
-
-/** The small round icon bubble used everywhere a habit is represented (row, chip, stat). */
+/**
+ * Burbuja circular con el icono del hábito (Icons8, a color). El icono se
+ * centra con `contentAlignment` y ocupa una fracción fija del círculo, así
+ * queda alineado a cualquier tamaño sin padding manual. Es decorativo
+ * (contentDescription = null): el nombre del hábito ya se lee al lado.
+ */
 @Composable
 fun VittaHabitIconBubble(
     icon: HabitIcon,
     modifier: Modifier = Modifier,
     bubbleSize: androidx.compose.ui.unit.Dp = VittaSizes.IconBubbleMedium,
-    tinted: Boolean = false
+    containerColor: androidx.compose.ui.graphics.Color = VittaColorRoles.surfaceVariant
 ) {
     Box(
         modifier = modifier
             .size(bubbleSize)
-            .background(VittaColorRoles.surfaceVariant, CircleShape),
+            .background(containerColor, CircleShape),
         contentAlignment = Alignment.Center
     ) {
-        VittaAssetImage(
-            assetPath = VittaIconAssets.icon(icon.assetName),
+        Image(
+            painter = painterResource(icon.drawable),
             contentDescription = null,
-            size = bubbleSize * 0.66f,
-            modifier = if (tinted) Modifier.alpha(0.32f) else Modifier
+            modifier = Modifier.fillMaxSize(0.64f),
+            contentScale = ContentScale.Fit
         )
     }
 }
@@ -148,7 +147,7 @@ fun VittaWaterTracker(
                 contentAlignment = Alignment.Center
             ) {
                 VittaAssetImage(
-                    assetPath = VittaIconAssets.icon(if (isFilled) HabitIcon.Water.assetName else HabitIcon.WaterEmpty.assetName),
+                    assetPath = VittaIconAssets.icon(if (isFilled) "agua-lleno" else "agua-vacio"),
                     contentDescription = null,
                     size = VittaSizes.TrackerChip * 0.6f
                 )
@@ -161,7 +160,7 @@ fun VittaWaterTracker(
 // Previews
 // ---------------------------------------------------------------------------
 
-@Preview(showBackground = true, backgroundColor = 0xFFF9F4EE)
+@Preview(showBackground = true, backgroundColor = 0xFFF6FBF8)
 @Composable
 private fun VittaHabitRowPreview() {
     VittaTheme {
@@ -170,13 +169,13 @@ private fun VittaHabitRowPreview() {
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             VittaHabitRow(
-                icon = HabitIcon.Water,
+                icon = HabitIcons.Water,
                 title = "Tomar agua",
                 subtitle = "Vas 3 de 8 vasos",
                 trailing = { VittaHabitDoneIndicator() }
             )
             VittaHabitRow(
-                icon = HabitIcon.Yoga,
+                icon = HabitIcons.Yoga,
                 title = "Hacer yoga",
                 subtitle = "10 minutos · 07:00"
             )

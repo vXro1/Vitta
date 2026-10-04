@@ -13,9 +13,11 @@ class TokenManager(private val context: Context) {
 
     private val tokenKey = stringPreferencesKey("jwt_token")
     private val nombreKey = stringPreferencesKey("user_nombre")
+    private val correoKey = stringPreferencesKey("user_correo")
 
     val tokenFlow: Flow<String?> = context.dataStore.data.map { it[tokenKey] }
     val nombreFlow: Flow<String?> = context.dataStore.data.map { it[nombreKey] }
+    val correoFlow: Flow<String?> = context.dataStore.data.map { it[correoKey] }
 
     suspend fun saveToken(token: String) {
         context.dataStore.edit { it[tokenKey] = token }
@@ -25,10 +27,15 @@ class TokenManager(private val context: Context) {
         context.dataStore.edit { it[nombreKey] = nombre }
     }
 
+    suspend fun saveCorreo(correo: String) {
+        context.dataStore.edit { it[correoKey] = correo }
+    }
+
     suspend fun clearToken() {
         context.dataStore.edit {
             it.remove(tokenKey)
             it.remove(nombreKey)
+            it.remove(correoKey)
         }
     }
 }

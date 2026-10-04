@@ -18,6 +18,12 @@ data class CreateHabitRequest(
     val tipo: String
 )
 
+data class UpdateHabitRequest(
+    val nombre: String,
+    val meta: String,
+    val frecuencia: String
+)
+
 data class RecordDto(
     val id: Int,
     val habito_id: Int,

@@ -6,27 +6,28 @@ Documentación del Design System implementado en `ui/theme/` y
 ## Filosofía visual
 
 Vitta se ve como una libreta cálida, no como una app "Material" genérica:
-fondos crema (`#F9F4EE`/`#FFFCF8`), nunca blanco puro; un verde salvia como
-color de acción; naranja terracota como acento de logro/racha; tipografía
-display con carácter (Caprasimo) combinada con una sans-serif limpia
-(Figtree) para todo lo demás; esquinas muy redondeadas (botones e íconos en
+fondos claros blanco-menta (`#F6FBF8`/`#FFFFFF`); un verde esmeralda como
+color de acción; naranja y ámbar como acentos de logro/racha (ver
+README_COLORES.md); una sola tipografía redondeada y amigable (Nunito)
+en toda la app; esquinas muy redondeadas (botones e íconos en
 "pastilla", tarjetas con radios grandes); sombras muy suaves y bajas en
 opacidad, casi nunca duras.
 
 ## Tipografía
 
-Dos familias, tal como en el `@font-face` del HTML:
+Una sola familia en **toda la app, desde el Login**: **Nunito**
+(Google Fonts, SIL Open Font License 1.1), pesos 400/500/600/700/800.
 
-- **Caprasimo** (un solo peso, 400) — títulos, números grandes, texto de
-  botones primarios. Es una fuente con personalidad; se usa con moderación
-  (títulos y CTAs), nunca para párrafos largos.
-- **Figtree** (400/500/600/700) — todo lo demás: cuerpo, labels, captions,
-  subtítulos.
+- Títulos, números grandes y botones primarios: ExtraBold (800) / Bold (700).
+- Cuerpo, labels y captions: Regular (400), Medium (500) y SemiBold (600).
+- Los estilos de Material 3 que Vitta no define también usan Nunito, así
+  los componentes estándar (selector de hora, chips, diálogos) no caen en
+  Roboto.
 
 Jerarquía (`VittaTextStyles` en `Type.kt`): `displayLarge` → `heading` →
 `title` → `subtitle` → `body` → `bodySmall` → `label` → `caption` →
 `button`/`buttonDisplay`. Cada uno corresponde a un tamaño realmente usado
-en el HTML (por ejemplo `title` = 19px/Caprasimo, tal como el título del
+en el HTML (por ejemplo `title` = 19px, tal como el título del
 diálogo "Diez desayunos sencillos").
 
 ## Espaciado

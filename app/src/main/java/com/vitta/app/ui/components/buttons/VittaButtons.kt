@@ -1,6 +1,10 @@
 package com.vitta.app.ui.components.buttons
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -59,8 +63,9 @@ fun VittaPrimaryButton(
         colors = ButtonDefaults.buttonColors(
             containerColor = VittaColorRoles.primary,
             contentColor = VittaColorRoles.onPrimary,
-            disabledContainerColor = VittaColorRoles.primary.copy(alpha = 0.4f),
-            disabledContentColor = VittaColorRoles.onPrimary.copy(alpha = 0.7f)
+            // Deshabilitado: fondo neutro + texto legible (antes verde pálido con texto claro, casi invisible).
+            disabledContainerColor = VittaColorRoles.surfaceMuted,
+            disabledContentColor = VittaColorRoles.textMuted
         ),
         contentPadding = VittaButtonDefaults.ContentPadding
     ) {
@@ -168,6 +173,30 @@ fun VittaIconCircleButton(
     }
 }
 
+/**
+ * Botón circular de regreso (flecha), el mismo en todas las pantallas
+ * secundarias. 48dp de área táctil y descripción accesible.
+ */
+@Composable
+fun VittaBackButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    contentDescription: String = "Volver"
+) {
+    androidx.compose.material3.IconButton(
+        onClick = onClick,
+        modifier = modifier
+            .size(VittaSizes.MinTouchTarget)
+            .border(1.dp, VittaColorRoles.border, CircleShape),
+        colors = androidx.compose.material3.IconButtonDefaults.iconButtonColors(
+            containerColor = VittaColorRoles.surface,
+            contentColor = VittaColorRoles.textPrimary
+        )
+    ) {
+        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = contentDescription)
+    }
+}
+
 @Composable
 private fun RowScope.VittaButtonContent(
     text: String,
@@ -195,7 +224,7 @@ private val VittaSpacingDefault = 8.dp
 // Previews
 // ---------------------------------------------------------------------------
 
-@Preview(showBackground = true, backgroundColor = 0xFFF9F4EE)
+@Preview(showBackground = true, backgroundColor = 0xFFF6FBF8)
 @Composable
 private fun VittaButtonsPreview() {
     VittaTheme {

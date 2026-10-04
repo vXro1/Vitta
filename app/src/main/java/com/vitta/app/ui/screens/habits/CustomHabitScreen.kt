@@ -1,27 +1,30 @@
 package com.vitta.app.ui.screens.habits
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Text
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.vitta.app.data.mock.suggestedUnits
+import com.vitta.app.ui.components.auth.VittaAuthErrorBanner
 import com.vitta.app.ui.components.buttons.VittaPrimaryButton
-import com.vitta.app.ui.components.forms.VittaTextField
+import com.vitta.app.ui.components.forms.VittaAuthTextField
+import com.vitta.app.ui.components.icons.HabitIcons
 import com.vitta.app.ui.theme.VittaColorRoles
-import com.vitta.app.ui.theme.VittaColors
-import com.vitta.app.ui.theme.VittaShapes
 import com.vitta.app.ui.theme.VittaSpacing
-import com.vitta.app.ui.theme.VittaTextStyles
+
+/** Ancho máximo del formulario para que en tablets/horizontal no se estire. */
+internal val HabitFormMaxWidth = 560.dp
 
 @Composable
 fun CustomHabitScreen(
@@ -30,191 +33,146 @@ fun CustomHabitScreen(
 ) {
     val viewModel: CustomHabitViewModel = viewModel()
     val state by viewModel.uiState.collectAsState()
+    val focusManager = LocalFocusManager.current
 
+    HabitFormScaffold(
+        title = "Nuevo hábito",
+        subtitle = "Créalo a tu medida en 5 pasos",
+        onBack = onBack,
+        bottomBar = {
+            state.errorMessage?.let {
+                VittaAuthErrorBanner(it)
+                Spacer(Modifier.height(VittaSpacing.Sm))
+            }
+            VittaPrimaryButton(
+                text = if (state.isLoading) "Guardando…" else "Guardar hábito",
+                loading = state.isLoading,
+                onClick = {
+                    focusManager.clearFocus()
+                    viewModel.save(onSaved)
+                }
+            )
+        }
+    ) {
+        HabitFormSection(title = "Nombre", step = 1) {
+            VittaAuthTextField(
+                value = state.nombre,
+                onValueChange = viewModel::onNombreChange,
+                label = "¿Qué hábito quieres construir?",
+                placeholder = "Ej: Meditar, Correr, Tomar vitaminas",
+                leadingIcon = Icons.Outlined.Edit,
+                keyboardType = KeyboardType.Text,
+                imeAction = ImeAction.Done,
+                keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
+                errorText = state.nombreError
+            )
+        }
+
+        HabitFormSection(
+            title = "Icono",
+            step = 2,
+            supportingText = "Te sugerimos uno según el nombre. Toca “Más” para ver todo el catálogo."
+        ) {
+            HabitIconPicker(selected = state.icon, onSelect = viewModel::onIconSelect)
+            // El servidor no guarda el icono: al recargar se deduce del nombre.
+            val shownLater = HabitIcons.forHabitName(state.nombre) ?: HabitIcons.Default
+            if (state.nombre.isNotBlank() && shownLater.id != state.icon.id) {
+                Spacer(Modifier.height(VittaSpacing.Sm))
+                HabitInfoNote(
+                    "El servidor aún no guarda el icono elegido. En tu inicio este hábito " +
+                        "se verá con el icono “${shownLater.label}”, que es el que coincide con su nombre."
+                )
+            }
+        }
+
+        HabitFormSection(title = "Meta", step = 3, supportingText = "¿Cuánto quieres lograr cada vez?") {
+            HabitGoalInput(
+                cantidad = state.metaValor,
+                onCantidadChange = viewModel::onMetaValorChange,
+                unidad = state.metaUnidad,
+                onUnidadChange = viewModel::onMetaUnidadChange,
+                unitSuggestions = suggestedUnits,
+                step = HabitTextFormat.stepFor(state.metaUnidad),
+                cantidadError = state.metaError,
+                unidadError = state.unidadError
+            )
+        }
+
+        HabitFormSection(title = "Frecuencia", step = 4) {
+            HabitFrequencySelector(
+                diasEspecificos = state.diasEspecificos,
+                onModeChange = viewModel::onFrequencyModeChange,
+                selectedDays = state.selectedDays,
+                onToggleDay = viewModel::toggleDay,
+                error = state.daysError
+            )
+        }
+
+        HabitFormSection(title = "Recordatorio", step = 5) {
+            HabitReminderTimeField(time = state.reminderTime, onTimeChange = viewModel::onReminderChange)
+            Spacer(Modifier.height(VittaSpacing.Sm))
+            HabitInfoNote(ReminderNotSavedNote)
+        }
+
+        HabitInfoNote("Crear un hábito no otorga VitaPuntos. Los puntos llegan cuando registras cumplimiento.")
+    }
+}
+
+/** Aviso honesto: el backend todavía no guarda icono ni hora (ver informe). */
+internal const val ReminderNotSavedNote =
+    "Por ahora la hora no se guarda en tu cuenta ni genera notificaciones: el servidor aún no tiene dónde almacenarla."
+
+/**
+ * Esqueleto común de los formularios de hábito: cabecera con regreso,
+ * contenido con scroll (centrado y con ancho máximo) y barra inferior fija
+ * con la acción principal, que sube con el teclado.
+ */
+@Composable
+fun HabitFormScaffold(
+    title: String,
+    onBack: () -> Unit,
+    subtitle: String? = null,
+    bottomBar: @Composable ColumnScope.() -> Unit,
+    content: @Composable ColumnScope.() -> Unit
+) {
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(VittaColorRoles.background)
-            .verticalScroll(rememberScrollState())
-            .padding(VittaSpacing.Lg)
+            .imePadding()
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                "‹",
-                style = VittaTextStyles.displayLarge,
-                color = VittaColorRoles.textPrimary,
-                modifier = Modifier.clickable(onClick = onBack).padding(end = VittaSpacing.Md)
+        HabitScreenHeader(title = title, subtitle = subtitle, onBack = onBack)
+
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState()),
+            contentAlignment = Alignment.TopCenter
+        ) {
+            Column(
+                modifier = Modifier
+                    .widthIn(max = HabitFormMaxWidth)
+                    .fillMaxWidth()
+                    .padding(horizontal = VittaSpacing.Lg, vertical = VittaSpacing.Sm),
+                verticalArrangement = Arrangement.spacedBy(VittaSpacing.Xxl),
+                content = content
             )
-            Text("Nuevo hábito", style = VittaTextStyles.heading, color = VittaColorRoles.textPrimary)
         }
 
-        Spacer(Modifier.height(VittaSpacing.Xl))
-
-        Text("Nombre", style = VittaTextStyles.subtitle, color = VittaColorRoles.textSecondary)
-        Spacer(Modifier.height(VittaSpacing.Xs))
-        VittaTextField(value = state.nombre, onValueChange = viewModel::onNombreChange, label = "")
-        if (state.nombreError != null) {
-            Spacer(Modifier.height(4.dp))
-            Text(state.nombreError ?: "", style = VittaTextStyles.body, color = VittaColors.Error)
-        }
-
-        Spacer(Modifier.height(VittaSpacing.Xl))
-        Text("Icono", style = VittaTextStyles.subtitle, color = VittaColorRoles.textSecondary)
-        Spacer(Modifier.height(VittaSpacing.Sm))
-
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(VittaSpacing.Sm)) {
-            items(HabitIcon.entries.filter { it != HabitIcon.WaterEmpty }) { icon ->
-                val selected = icon == state.icon
-                Box(
-                    modifier = Modifier
-                        .size(56.dp)
-                        .background(
-                            if (selected) VittaColors.SurfaceTint else VittaColors.Surface,
-                            VittaShapes.large
-                        )
-                        .clickable { viewModel.onIconSelect(icon) },
-                    contentAlignment = Alignment.Center
-                ) {
-                    VittaHabitIconBubble(icon = icon, bubbleSize = 40.dp)
-                }
-            }
-        }
-
-        Spacer(Modifier.height(VittaSpacing.Xl))
-
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text("Meta diaria", style = VittaTextStyles.subtitle, color = VittaColorRoles.textSecondary)
-        }
-        Spacer(Modifier.height(VittaSpacing.Sm))
-
-        Row(
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(VittaColors.Surface, VittaShapes.large)
-                .padding(horizontal = VittaSpacing.Xl, vertical = VittaSpacing.Xl),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+                .background(VittaColorRoles.surface),
+            contentAlignment = Alignment.Center
         ) {
-            Box(
+            Column(
                 modifier = Modifier
-                    .size(48.dp)
-                    .background(VittaColors.SurfaceMuted, CircleShape)
-                    .clickable { viewModel.onMetaDecrease() },
-                contentAlignment = Alignment.Center
-            ) {
-                Text("–", style = VittaTextStyles.heading, color = VittaColorRoles.textPrimary)
-            }
-            Text("${state.metaValor}", style = VittaTextStyles.displayLarge, color = VittaColorRoles.textPrimary)
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .background(VittaColorRoles.primary, CircleShape)
-                    .clickable { viewModel.onMetaIncrease() },
-                contentAlignment = Alignment.Center
-            ) {
-                Text("+", style = VittaTextStyles.heading, color = VittaColorRoles.background)
-            }
+                    .widthIn(max = HabitFormMaxWidth)
+                    .fillMaxWidth()
+                    .padding(VittaSpacing.Lg),
+                content = bottomBar
+            )
         }
-
-        Spacer(Modifier.height(VittaSpacing.Sm))
-        VittaTextField(
-            value = state.metaUnidad,
-            onValueChange = viewModel::onMetaUnidadChange,
-            label = "Unidad (ej: minutos al día, vasos al día)"
-        )
-
-        Spacer(Modifier.height(VittaSpacing.Xl))
-        Text("Frecuencia", style = VittaTextStyles.subtitle, color = VittaColorRoles.textSecondary)
-        Spacer(Modifier.height(VittaSpacing.Sm))
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(VittaColors.SurfaceMuted, VittaShapes.pill)
-                .padding(4.dp)
-        ) {
-            listOf("Todos los días" to false, "Días específicos" to true).forEach { (text, value) ->
-                val selected = state.diasEspecificos == value
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .background(if (selected) VittaColors.Surface else VittaColors.SurfaceMuted, VittaShapes.pill)
-                        .clickable { viewModel.onFrequencyModeChange(value) }
-                        .padding(vertical = VittaSpacing.Md),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text,
-                        style = VittaTextStyles.button,
-                        color = if (selected) VittaColorRoles.textPrimary else VittaColorRoles.textMuted
-                    )
-                }
-            }
-        }
-
-        if (state.diasEspecificos) {
-            Spacer(Modifier.height(VittaSpacing.Md))
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                listOf("L", "M", "X", "J", "V", "S", "D").forEach { day ->
-                    val selected = day in state.selectedDays
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .background(
-                                if (selected) VittaColorRoles.primary else VittaColors.SurfaceVariant,
-                                CircleShape
-                            )
-                            .clickable { viewModel.toggleDay(day) },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            day,
-                            style = VittaTextStyles.body,
-                            color = if (selected) VittaColorRoles.background else VittaColorRoles.textSecondary
-                        )
-                    }
-                }
-            }
-        }
-
-        Spacer(Modifier.height(VittaSpacing.Xl))
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(VittaColors.Surface, VittaShapes.large)
-                .padding(VittaSpacing.Lg),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column {
-                Text("Recordatorio", style = VittaTextStyles.subtitle, color = VittaColorRoles.textPrimary)
-                Text("Vitta te avisa a esta hora", style = VittaTextStyles.body, color = VittaColorRoles.textMuted)
-            }
-            Text(state.reminderTime, style = VittaTextStyles.title, color = VittaColors.OrangeAccent)
-        }
-
-        Spacer(Modifier.height(VittaSpacing.Sm))
-        Text(
-            "Crear un hábito no otorga VitaPuntos. Los puntos llegan cuando registras cumplimiento.",
-            style = VittaTextStyles.caption,
-            color = VittaColorRoles.textMuted
-        )
-
-        if (state.errorMessage != null) {
-            Spacer(Modifier.height(VittaSpacing.Sm))
-            Text(state.errorMessage ?: "", style = VittaTextStyles.body, color = VittaColors.Error)
-        }
-
-        Spacer(Modifier.height(VittaSpacing.Xxl))
-
-        if (state.isLoading) {
-            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = VittaColorRoles.primary)
-            }
-        } else {
-            VittaPrimaryButton(text = "Guardar hábito", onClick = { viewModel.save(onSaved) })
-        }
-
-        Spacer(Modifier.height(VittaSpacing.Xl))
     }
 }

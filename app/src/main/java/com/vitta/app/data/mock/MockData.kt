@@ -1,6 +1,7 @@
 package com.vitta.app.data.mock
 
-import com.vitta.app.ui.screens.habits.HabitIcon
+import com.vitta.app.ui.components.icons.HabitIcon
+import com.vitta.app.ui.components.icons.HabitIcons
 import com.vitta.app.ui.components.mascot.MascotState
 import com.vitta.app.ui.components.progress.Insignia
 
@@ -18,10 +19,10 @@ data class MockHabit(
 )
 
 val mockTodayHabits = listOf(
-    MockHabit(HabitIcon.Water, "Tomar agua", "Vas 3 de 8 vasos"),
-    MockHabit(HabitIcon.Yoga, "Hacer yoga", "10 minutos · 07:00"),
-    MockHabit(HabitIcon.Read, "Leer", "15 de 20 minutos"),
-    MockHabit(HabitIcon.Walk, "Caminar", "0 de 20 minutos")
+    MockHabit(HabitIcons.Water, "Tomar agua", "Vas 3 de 8 vasos"),
+    MockHabit(HabitIcons.Yoga, "Hacer yoga", "10 minutos · 07:00"),
+    MockHabit(HabitIcons.Read, "Leer", "15 de 20 minutos"),
+    MockHabit(HabitIcons.Walk, "Caminar", "0 de 20 minutos")
 )
 
 data class MockReward(

@@ -1,88 +1,87 @@
 # Paleta de colores — Vitta
 
-Fuente: `ui/theme/Color.kt`. Todos los valores fueron extraídos directamente
-de los estilos inline del maquetado (`Vitta App.html`) — ninguno fue
-inventado. Donde el HTML no distinguía un rol (p. ej. "error"), se indica
-explícitamente cómo se derivó.
+Fuente: `ui/theme/Color.kt`.
+
+**2026-10 — paleta renovada.** El verde oliva (`#778661`) y los beige/grises
+desaturados del maquetado original (`#EFE6D6`, `#F4EFE4`, `#8A9283`…) se
+reemplazaron por una paleta clara, viva y fresca: verde esmeralda, naranja,
+ámbar y fondos blanco-menta. Los **nombres** de las constantes no cambiaron,
+así todas las pantallas heredan la paleta sin tocar cada una.
+
+Contrastes calculados con la fórmula de luminancia relativa de WCAG 2.1
+(texto normal ≥ 4.5:1).
 
 ## Marca — verde principal
 
+| Nombre | HEX | Uso | Contraste |
+|---|---|---|---|
+| `GreenPrimary` | `#0A8754` | Botón primario, selección, progreso | 4.56:1 con texto blanco |
+| `GreenHover` | `#08774A` | Hover del botón primario | |
+| `GreenPressed` | `#066B42` | Presionado; texto verde sobre fondos claros | 6.6:1 sobre blanco, 5.7:1 sobre `SurfaceTint` |
+| `GreenMid` | `#2FB67C` | Barras de progreso secundarias | decorativo |
+| `GreenSoft` | `#6ED3A3` | Relleno terciario | decorativo |
+| `GreenPale` | `#B5EBD0` | Bordes de tarjetas completadas, texto sobre toast oscuro | decorativo |
+| `GreenTrack` | `#D6F2E4` | Riel de progreso sin rellenar | decorativo |
+
+## Acentos
+
+| Nombre | HEX | Uso | Contraste |
+|---|---|---|---|
+| `OrangeAccent` | `#C2410C` | Racha, enlaces | 5.2:1 sobre blanco |
+| `OrangeAccentHover` | `#9A3412` | Hover de enlaces | |
+| `GoldAccent` | `#FFB020` | Anillo de progreso, puntos, logros | usar solo con texto oscuro (7.6:1 con `TextPrimary`) |
+| `SkyAccent` | `#1C6FC4` | Recordatorio / hora | ≈5:1 sobre blanco |
+| `SkySoft` | `#E4F0FB` | Fondo del campo de hora | decorativo |
+
+## Superficies
+
 | Nombre | HEX | Uso |
 |---|---|---|
-| `GreenPrimary` | `#778661` | Botón primario, ítem de navegación activo, relleno de progreso |
-| `GreenHover` | `#66754F` | Estado `:hover` del botón primario |
-| `GreenPressed` | `#56633F` | Estado `:active`/presionado del botón primario |
-| `GreenMid` | `#9CAA86` | Barras de progreso secundarias (p. ej. día 3 de 4 en el gráfico semanal) |
-| `GreenSoft` | `#A9B893` | Relleno terciario de progreso |
-| `GreenPale` | `#C3CDB1` | Texto secundario sobre el toast oscuro |
-| `GreenTrack` | `#D4DCC2` | Riel/track sin rellenar de una barra de progreso |
-
-## Acento — naranja y dorado
-
-| Nombre | HEX | Uso |
-|---|---|---|
-| `OrangeAccent` | `#A55729` | Texto de racha/fuego, enlaces, hora del recordatorio |
-| `OrangeAccentHover` | `#7E3F1C` | Estado `:hover` de enlaces |
-| `GoldAccent` | `#F1AA52` | Círculo de puntos, ícono del toast |
-
-## Superficies (cálidas, nunca blanco/gris puro)
-
-| Nombre | HEX | Uso |
-|---|---|---|
-| `Background` | `#F9F4EE` | Fondo de pantalla |
-| `Surface` | `#FFFCF8` | Tarjetas elevadas |
-| `SurfaceVariant` | `#EFE6D6` | Burbuja de ícono, chip suave |
-| `SurfaceMuted` | `#F4EFE4` | Chip secundario, tile de estadística |
-| `SurfaceTint` | `#EEF0E3` | Superficie con tinte verde muy sutil |
+| `Background` | `#F6FBF8` | Fondo de pantalla (blanco con un toque menta) |
+| `Surface` | `#FFFFFF` | Tarjetas, campos |
+| `SurfaceVariant` | `#E3F5EC` | Burbuja de icono |
+| `SurfaceMuted` | `#EEF5F1` | Chips secundarios, controles segmentados |
+| `SurfaceTint` | `#DDF3E7` | Estado seleccionado / completado |
 
 ## Bordes
 
-| Nombre | HEX | Uso |
-|---|---|---|
-| `BorderSubtle` | `#DFD4C2` | Borde de botón outlined |
-| `BorderMuted` | `#E3D9C8` | Borde de tarjeta bloqueada |
+| Nombre | HEX |
+|---|---|
+| `BorderSubtle` | `#C9DDD3` |
+| `BorderMuted` | `#DCE9E2` |
 
 ## Texto
 
-| Nombre | HEX | Uso |
-|---|---|---|
-| `TextPrimary` | `#2D403E` | Títulos, texto principal |
-| `TextSecondary` | `#5C6A5B` | Cuerpo de texto de apoyo |
-| `TextMuted` | `#8A9283` | Captions, metadatos |
-| `TextFaint` | `#A9A493` | Etiquetas deshabilitadas / de menor énfasis |
+| Nombre | HEX | Uso | Contraste sobre `Background` |
+|---|---|---|---|
+| `TextPrimary` | `#14312A` | Títulos y texto principal | 13.4:1 |
+| `TextSecondary` | `#3F5C54` | Texto de apoyo | 7.0:1 |
+| `TextMuted` | `#5A746C` | Captions, metadatos | 4.8:1 (antes `#8A9283` ≈ 3:1, insuficiente) |
+| `TextFaint` | `#93A79F` | Solo deshabilitado/decorativo | 2.5:1 — no usar para texto que deba leerse |
 
-## Overlays y feedback
+## Overlays y estados
 
 | Nombre | Valor | Uso |
 |---|---|---|
-| `ScrimBackdrop` | `rgba(45,64,62,.62)` → `Color(0xA32D403E)` | Fondo oscuro detrás de diálogos y hojas de recompensa |
-| `ToastSurface` | `#2D403E` | Fondo del toast/snackbar oscuro |
-| `SelectionTint` | `rgba(165,87,41,.28)` | Color de selección de texto (`::selection` en el HTML) |
-
-## Estados semánticos (no presentes como colores literales en el HTML)
-
-El maquetado no define una paleta de estados (éxito/advertencia/error) —
-usa el verde y el naranja de marca para "positivo" en general, y no tiene
-ninguna pantalla de error visible. Para tener un `ColorScheme` de Material 3
-completo, se documentan así (no se inventó una paleta nueva, se reutilizó
-la existente donde tenía sentido):
-
-| Rol | Valor | Origen |
-|---|---|---|
-| `Success` | `GreenPrimary` | Reutiliza el verde de marca |
-| `Warning` | `GoldAccent` | Reutiliza el dorado de puntos/logros |
-| `Info` | `OrangeAccent` | Reutiliza el naranja de acento |
-| `Error` | `#B3453A` (nuevo) | **Única** adición real: un tono de la misma familia cálida que `OrangeAccent`, para el caso — no presente en el mockup — en que Material 3 necesita un color de error |
+| `ScrimBackdrop` | `#A314312A` | Fondo oscuro detrás de diálogos |
+| `ToastSurface` | `#14312A` | Toast/snackbar |
+| `SelectionTint` | `#470A8754` | Selección de texto |
+| `Success` | `GreenPrimary` | |
+| `Warning` | `GoldAccent` | |
+| `Info` | `SkyAccent` | |
+| `Error` | `#C62828` | 5.6:1 sobre blanco |
 
 ## Dónde viven en el código
 
-- Valores crudos: `VittaColors` (objeto en `Color.kt`).
-- Alias semánticos para usar en componentes: `VittaColorRoles` (p. ej.
-  `VittaColorRoles.primary`, `VittaColorRoles.textSecondary`).
-- Integrados a Material 3 vía `VittaTheme` (`Theme.kt`), que además define
-  un `ColorScheme` oscuro **derivado** (no diseñado en el mockup original —
-  ver el comentario en `Theme.kt`) para que la app respete el modo oscuro
-  del sistema en vez de forzar la pantalla clara.
+- Valores crudos: `VittaColors` (`Color.kt`).
+- Alias semánticos: `VittaColorRoles` (p. ej. `VittaColorRoles.primary`,
+  `VittaColorRoles.reminder`).
+- Material 3: `VittaTheme` (`Theme.kt`). **Por ahora se usa siempre el
+  esquema claro**: todas las pantallas pintan colores claros explícitos y
+  seguir el modo oscuro del sistema mezclaba componentes oscuros de Material
+  (diálogos, campos, selectores) con pantallas claras, y el texto quedaba
+  claro sobre fondo claro. Se puede volver a `isSystemInDarkTheme()` cuando
+  exista un modo oscuro diseñado.
 
 **Regla del proyecto:** ningún Composable debe escribir `Color(0xFF...)`
-directamente — siempre `VittaColors.*` o `VittaColorRoles.*`.
+directamente; siempre `VittaColors.*` o `VittaColorRoles.*`.
