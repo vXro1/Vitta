@@ -136,7 +136,7 @@ fun StoreBanner(onClick: () -> Unit, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun ProgressTrack(progress: Float, modifier: Modifier = Modifier) {
+fun ProgressTrack(progress: Float, modifier: Modifier = Modifier) {
     Box(
         modifier
             .height(8.dp)

@@ -53,7 +53,7 @@ private const val RefreshHomeKey = "refresh_home"
 fun VittaNavHost(
     modifier: Modifier = Modifier,
     navController: NavHostController = rememberNavController(),
-    startDestination: String = VittaRoutes.Onboarding
+    startDestination: String = VittaRoutes.Home
 ) {
     val context = LocalContext.current
     val tokenManager = remember { TokenManager(context) }
