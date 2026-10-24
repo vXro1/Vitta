@@ -4,6 +4,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
+import androidx.compose.material.icons.automirrored.outlined.TrendingUp
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.outlined.Home
@@ -21,18 +23,19 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.vitta.app.ui.screens.profile.ProfileScreen
+import com.vitta.app.ui.screens.progress.ProgressScreen
 import com.vitta.app.ui.theme.VittaColorRoles
 import com.vitta.app.ui.theme.VittaTextStyles
 
 private enum class MainTab(val label: String, val selectedIcon: ImageVector, val icon: ImageVector) {
     Home("Inicio", Icons.Filled.Home, Icons.Outlined.Home),
+    Progress("Progreso", Icons.AutoMirrored.Filled.TrendingUp, Icons.AutoMirrored.Outlined.TrendingUp),
     Me("Yo", Icons.Filled.Person, Icons.Outlined.Person)
 }
 
 /**
- * Contenedor principal tras iniciar sesión: barra inferior con "Inicio" y
- * "Yo". Solo existen las pestañas con pantallas reales (no se muestran
- * Progreso/Logros porque aún no están implementadas).
+ * Contenedor principal tras iniciar sesión: barra inferior con "Inicio",
+ * "Progreso" y "Yo". Solo existen las pestañas con pantallas reales.
  *
  * @param refreshRequests cambia de valor cuando otra pantalla (p. ej. editar
  *   hábito) pide recargar la lista al volver.
@@ -88,6 +91,9 @@ fun MainScreen(
                     onAddHabit = onAddHabit,
                     onEditHabit = onEditHabit
                 )
+            }
+            MainTab.Progress -> Box(modifier) {
+                ProgressScreen()
             }
             MainTab.Me -> Box(modifier) {
                 ProfileScreen(
