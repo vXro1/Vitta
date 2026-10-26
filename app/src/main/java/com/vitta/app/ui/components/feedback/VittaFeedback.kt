@@ -221,7 +221,7 @@ fun VittaRewardSheet(
                 }
                 Row(verticalAlignment = Alignment.Top) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(area, style = VittaTextStyles.label, color = VittaColors.OrangeAccent)
+                        Text(area, style = VittaTextStyles.label, color = VittaColors.GreenPressed)
                         Spacer(Modifier.height(VittaSpacing.Xs))
                         Text(title, style = VittaTextStyles.heading, color = VittaColorRoles.textPrimary)
                         Spacer(Modifier.height(VittaSpacing.Xs))

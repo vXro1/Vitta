@@ -211,7 +211,8 @@ fun HabitIconTile(
             painter = painterResource(icon.drawable),
             contentDescription = null,
             modifier = Modifier.fillMaxSize(0.58f),
-            contentScale = ContentScale.Fit
+            contentScale = ContentScale.Fit,
+            colorFilter = com.vitta.app.ui.theme.VittaIconTint.habit
         )
         if (selected) {
             Box(

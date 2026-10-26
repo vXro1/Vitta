@@ -90,7 +90,7 @@ fun VittaProgressCard(
     VittaSurfaceCard(modifier = modifier) {
         Row(verticalAlignment = Alignment.Top) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(eyebrow, style = VittaTextStyles.label, color = VittaColors.OrangeAccent)
+                Text(eyebrow, style = VittaTextStyles.label, color = VittaColors.GreenPressed)
                 Spacer(Modifier.height(VittaSpacing.Xxs))
                 Text(title, style = VittaTextStyles.heading, color = VittaColorRoles.textPrimary)
                 Spacer(Modifier.height(VittaSpacing.Xs))

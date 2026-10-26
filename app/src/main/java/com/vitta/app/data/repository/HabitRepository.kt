@@ -15,7 +15,7 @@ sealed class HabitsResult {
 }
 
 sealed class CreateHabitResult {
-    object Success : CreateHabitResult()
+    data class Success(val habit: HabitDto) : CreateHabitResult()
     data class Error(val message: String) : CreateHabitResult()
 }
 
@@ -52,8 +52,7 @@ class HabitRepository {
     }
 
     suspend fun createHabit(nombre: String, meta: String, frecuencia: String, tipo: String): CreateHabitResult = try {
-        ApiClient.habitApi.createHabit(CreateHabitRequest(nombre, meta, frecuencia, tipo))
-        CreateHabitResult.Success
+        CreateHabitResult.Success(ApiClient.habitApi.createHabit(CreateHabitRequest(nombre, meta, frecuencia, tipo)))
     } catch (e: HttpException) {
         CreateHabitResult.Error("No se pudo guardar \"$nombre\" (${e.code()})")
     } catch (e: Exception) {

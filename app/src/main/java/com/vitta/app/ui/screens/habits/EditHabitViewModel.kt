@@ -5,6 +5,8 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.vitta.app.data.repository.HabitRepository
 import com.vitta.app.data.repository.HabitResult
+import com.vitta.app.ui.components.icons.HabitIcon
+import com.vitta.app.ui.components.icons.HabitIconStore
 import com.vitta.app.ui.components.icons.HabitIcons
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -28,10 +30,9 @@ data class EditHabitUiState(
     val daysError: String? = null,
     val isSaving: Boolean = false,
     val errorMessage: String? = null,
-    val isDeleting: Boolean = false
-) {
-    val icon get() = HabitIcons.forHabitName(nombre) ?: HabitIcons.Default
-}
+    val isDeleting: Boolean = false,
+    val icon: HabitIcon = HabitIcons.Default
+)
 
 /** Edita nombre, meta (cantidad + unidad) y frecuencia: los campos que acepta PUT /api/habits/:id. */
 class EditHabitViewModel(
@@ -59,7 +60,8 @@ class EditHabitViewModel(
                         metaUnidad = unidad,
                         diasEspecificos = especificos,
                         selectedDays = days,
-                        frecuenciaOriginal = habit.frecuencia
+                        frecuenciaOriginal = habit.frecuencia,
+                        icon = HabitIconStore.iconFor(habit.id, habit.nombre)
                     )
                 }
                 is HabitResult.Error -> {
@@ -71,6 +73,10 @@ class EditHabitViewModel(
 
     fun onNombreChange(value: String) {
         _uiState.value = _uiState.value.copy(nombre = value, nombreError = null)
+    }
+
+    fun onIconSelect(icon: HabitIcon) {
+        _uiState.value = _uiState.value.copy(icon = icon)
     }
 
     fun onMetaValorChange(value: Int) {
@@ -122,6 +128,7 @@ class EditHabitViewModel(
                 frecuencia = frecuencia
             )) {
                 is HabitResult.Success -> {
+                    HabitIconStore.save(habitId, state.icon)
                     _uiState.value = _uiState.value.copy(isSaving = false)
                     onSaved()
                 }

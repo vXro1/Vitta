@@ -205,7 +205,7 @@ internal fun UndoRecordDialog(habitName: String, onConfirm: () -> Unit, onDismis
         },
         confirmButton = {
             TextButton(onClick = onConfirm) {
-                Text("Desmarcar", style = VittaTextStyles.button, color = VittaColors.OrangeAccentHover)
+                Text("Desmarcar", style = VittaTextStyles.button, color = VittaColors.Error)
             }
         },
         dismissButton = {
@@ -302,7 +302,7 @@ private fun HeroCard(
                             else -> "VAS BIEN"
                         },
                         style = VittaTextStyles.label,
-                        color = VittaColors.OrangeAccent
+                        color = VittaColorRoles.primaryPressed
                     )
                     Spacer(Modifier.height(VittaSpacing.Xs))
                     Text(
@@ -400,23 +400,34 @@ private fun LevelProgress(levelName: String, pointsToNext: Int?, progress: Float
             )
         }
         Spacer(Modifier.height(VittaSpacing.Xs))
-        ProgressBar(progress = progress, modifier = Modifier.fillMaxWidth())
+        // Amarillo de marca: los puntos y el nivel son recompensas.
+        ProgressBar(
+            progress = progress,
+            modifier = Modifier.fillMaxWidth(),
+            fill = VittaColors.GoldAccent,
+            track = VittaColors.SurfaceVariant
+        )
     }
 }
 
 @Composable
-private fun ProgressBar(progress: Float, modifier: Modifier = Modifier) {
+private fun ProgressBar(
+    progress: Float,
+    modifier: Modifier = Modifier,
+    fill: androidx.compose.ui.graphics.Color = VittaColors.GreenPrimary,
+    track: androidx.compose.ui.graphics.Color = VittaColors.GreenTrack
+) {
     Box(
         modifier
             .height(8.dp)
             .clip(CircleShape)
-            .background(VittaColors.SurfaceVariant)
+            .background(track)
     ) {
         Box(
             Modifier
                 .fillMaxHeight()
                 .fillMaxWidth(progress.coerceIn(0f, 1f))
-                .background(VittaColors.OrangeAccent)
+                .background(fill, CircleShape)
         )
     }
 }
@@ -620,7 +631,7 @@ private fun StreakChip(days: Int) {
     ) {
         StreakFlame(14.dp)
         Spacer(Modifier.width(VittaSpacing.Xxs))
-        Text("$days", style = VittaTextStyles.caption, color = VittaColors.OrangeAccent)
+        Text("$days", style = VittaTextStyles.caption, color = VittaColorRoles.textPrimary)
     }
 }
 

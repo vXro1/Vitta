@@ -63,7 +63,12 @@ object ProgressCalculator {
                 done < scheduled -> 2
                 else -> 3
             }
-            HeatCell(day, level, isToday = day == today)
+            val (hechos, faltantes) = habits.filter { isScheduled(it, day) }.partition { day in it.completedDays }
+            HeatCell(
+                day, level, isToday = day == today, done = done, scheduled = scheduled,
+                habitsDone = hechos.map { DayHabit(it.id, it.name) },
+                habitsMissed = faltantes.map { DayHabit(it.id, it.name) }
+            )
         }
 
         val trends = habits.mapNotNull { habit ->
@@ -153,8 +158,8 @@ object ProgressCalculator {
     }
 
     val DayLetters = listOf("L", "M", "M", "J", "V", "S", "D")
-    private val DayNames = listOf("Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo")
-    private val MonthNames = listOf(
+    val DayNames = listOf("Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo")
+    val MonthNames = listOf(
         "enero", "febrero", "marzo", "abril", "mayo", "junio",
         "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"
     )
