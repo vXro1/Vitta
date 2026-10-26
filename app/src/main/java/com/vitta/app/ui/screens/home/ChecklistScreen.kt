@@ -30,6 +30,8 @@ import com.vitta.app.R
 import com.vitta.app.ui.components.auth.VittaAuthErrorBanner
 import com.vitta.app.ui.components.brand.VittaLogo
 import com.vitta.app.ui.components.buttons.VittaPrimaryButton
+import com.vitta.app.ui.components.common.VittaAssetImage
+import com.vitta.app.ui.components.common.VittaIconAssets
 import com.vitta.app.ui.components.mascot.MascotSize
 import com.vitta.app.ui.components.mascot.MascotState
 import com.vitta.app.ui.components.mascot.VittaMascot
@@ -301,14 +303,15 @@ private fun HeroCard(
             Spacer(Modifier.height(VittaSpacing.Lg))
 
             Row(horizontalArrangement = Arrangement.spacedBy(VittaSpacing.Sm)) {
+                // La llama de racha es la ilustración propia de Vitta (no de Icons8).
                 HeroStat(
-                    icon = R.drawable.ic8_fire_element,
+                    icon = { StreakFlame(32.dp) },
                     value = "$racha",
                     label = if (racha == 1) "día de racha" else "días de racha",
                     modifier = Modifier.weight(1f)
                 )
                 HeroStat(
-                    icon = R.drawable.ic8_trophy,
+                    icon = { StatIcon(R.drawable.ic8_trophy) },
                     value = formatPoints(points),
                     label = "VitaPuntos",
                     modifier = Modifier.weight(1f)
@@ -322,20 +325,31 @@ private fun HeroCard(
 }
 
 @Composable
-private fun HeroStat(icon: Int, value: String, label: String, modifier: Modifier = Modifier) {
+private fun HeroStat(icon: @Composable () -> Unit, value: String, label: String, modifier: Modifier = Modifier) {
     Row(
         modifier = modifier
             .background(VittaColorRoles.surfaceVariant, VittaShapes.medium)
             .padding(VittaSpacing.Md),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Image(painterResource(icon), contentDescription = null, modifier = Modifier.size(32.dp))
+        icon()
         Spacer(Modifier.width(VittaSpacing.Sm))
         Column {
             Text(value, style = VittaTextStyles.heading, color = VittaColorRoles.textPrimary)
             Text(label, style = VittaTextStyles.caption, color = VittaColorRoles.textMuted)
         }
     }
+}
+
+@Composable
+private fun StatIcon(icon: Int) {
+    Image(painterResource(icon), contentDescription = null, modifier = Modifier.size(32.dp))
+}
+
+/** Llama de racha creada para Vitta (`assets/vitta/icons/icon_streak_flame.svg`). Decorativa. */
+@Composable
+private fun StreakFlame(size: androidx.compose.ui.unit.Dp) {
+    VittaAssetImage(assetPath = VittaIconAssets.streakFlame, contentDescription = null, size = size)
 }
 
 @Composable
@@ -556,7 +570,7 @@ private fun StreakChip(days: Int) {
             .padding(horizontal = VittaSpacing.Sm, vertical = VittaSpacing.Xxs),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Image(painterResource(R.drawable.ic8_fire_element), contentDescription = null, modifier = Modifier.size(12.dp))
+        StreakFlame(14.dp)
         Spacer(Modifier.width(VittaSpacing.Xxs))
         Text("$days", style = VittaTextStyles.caption, color = VittaColors.OrangeAccent)
     }

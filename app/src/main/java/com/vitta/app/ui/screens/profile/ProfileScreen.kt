@@ -1,52 +1,67 @@
-package com.vitta.app.ui.screens.profile
+﻿package com.vitta.app.ui.screens.profile
 
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
-import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.vitta.app.R
-import com.vitta.app.ui.theme.VittaColorRoles
-import com.vitta.app.ui.theme.VittaColors
-import com.vitta.app.ui.theme.VittaShapes
-import com.vitta.app.ui.theme.VittaSpacing
-import com.vitta.app.ui.theme.VittaTextStyles
+import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import com.vitta.app.ui.components.common.VittaIconAssets
+import com.vitta.app.ui.components.mascot.MascotSize
+import com.vitta.app.ui.components.mascot.MascotState
+import com.vitta.app.ui.components.mascot.VittaMascot
+import com.vitta.app.ui.components.progress.Insignia
+import com.vitta.app.ui.theme.Mk
+import com.vitta.app.ui.theme.caprasimo
+import com.vitta.app.ui.theme.figtree
+import com.vitta.app.ui.theme.mockShadow
 
-private val ProfileMaxWidth = 640.dp
+private val R28 = RoundedCornerShape(28.dp)
+private val R24 = RoundedCornerShape(24.dp)
+private val Pill = RoundedCornerShape(percent = 50)
+private val MaxWidth = 640.dp
 
 /**
- * Sección "Yo": datos de la cuenta que la app ya conoce (nombre y correo
- * devueltos por el login/registro), resumen de progreso, créditos y
- * cierre de sesión con confirmación. No se muestra nada que el backend
- * no provea (no hay endpoint de perfil ni de preferencias).
+ * Sección "Yo", maquetada según las pantallas Perfil y Logros del
+ * mockup (`vitta-app-maquetado--main`), con sus colores, Caprasimo/Figtree,
+ * tamaños y espaciados (ver [Mk]). El progreso vive en su propia pestaña.
+ *
+ * - Logros: datos reales de `GET /api/logros` vía [ProfileViewModel].
+ * - Nombre, correo, hábitos activos y mejor racha: los entrega la app como antes.
  */
 @Composable
 fun ProfileScreen(
@@ -54,8 +69,10 @@ fun ProfileScreen(
     userEmail: String?,
     activeHabits: Int,
     bestStreak: Int,
-    onLogout: () -> Unit
+    onLogout: () -> Unit,
+    viewModel: ProfileViewModel = viewModel()
 ) {
+    val state by viewModel.uiState.collectAsState()
     var confirmLogout by rememberSaveable { mutableStateOf(false) }
     val uriHandler = LocalUriHandler.current
     val context = LocalContext.current
@@ -63,200 +80,358 @@ fun ProfileScreen(
         runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull() ?: "—"
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(VittaColorRoles.background),
-        contentAlignment = Alignment.TopCenter
-    ) {
+    LaunchedEffect(Unit) { viewModel.cargarLogros() }
+
+    Box(Modifier.fillMaxSize().background(Mk.Screen), contentAlignment = Alignment.TopCenter) {
+        // padding:16px 20px 24px
         Column(
-            modifier = Modifier
-                .widthIn(max = ProfileMaxWidth)
+            Modifier
+                .widthIn(max = MaxWidth)
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(VittaSpacing.Lg),
-            verticalArrangement = Arrangement.spacedBy(VittaSpacing.Lg)
+                .padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 24.dp)
         ) {
-            Text("Yo", style = VittaTextStyles.displayLarge, color = VittaColorRoles.textPrimary, modifier = Modifier.semantics { heading() })
-
-            // ---- Tarjeta de perfil ----
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(VittaColorRoles.surface, VittaShapes.extraLarge)
-                    .border(1.dp, VittaColorRoles.border, VittaShapes.extraLarge)
-                    .padding(VittaSpacing.Xl),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            // ---- Cabecera: display:flex;align-items:center;gap:16px ----
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
-                    modifier = Modifier
-                        .size(64.dp)
-                        .background(VittaColorRoles.primary, CircleShape),
-                    contentAlignment = Alignment.Center
+                    Modifier.size(84.dp).clip(CircleShape).background(Mk.Sand),
+                    contentAlignment = Alignment.BottomCenter
                 ) {
-                    Text(
-                        userName.trim().take(1).uppercase().ifBlank { "?" },
-                        style = VittaTextStyles.displayLarge,
-                        color = VittaColorRoles.onPrimary
+                    VittaMascot(
+                        state = MascotState.GoodHabits,
+                        size = MascotSize.Small,
+                        modifier = Modifier.offset(y = 6.dp)
                     )
                 }
-                Spacer(Modifier.width(VittaSpacing.Lg))
+                Spacer(Modifier.width(16.dp))
                 Column(Modifier.weight(1f)) {
-                    Text(userName.ifBlank { "Usuario de Vitta" }, style = VittaTextStyles.title, color = VittaColorRoles.textPrimary)
+                    Text(
+                        userName.ifBlank { "Usuario de Vitta" },
+                        style = caprasimo(23f, 1.1f, -0.02f),
+                        color = Mk.Ink,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.semantics { heading() }
+                    )
                     if (!userEmail.isNullOrBlank()) {
-                        Text(userEmail, style = VittaTextStyles.bodySmall, color = VittaColorRoles.textSecondary)
+                        Text(
+                            userEmail,
+                            style = figtree(500, 13f),
+                            color = Mk.Muted,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.padding(top = 5.dp)
+                        )
                     }
                 }
             }
 
-            // ---- Progreso ----
-            Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(VittaSpacing.Sm)) {
-                ProfileStat(R.drawable.ic8_checklist, "$activeHabits", if (activeHabits == 1) "hábito activo" else "hábitos activos", Modifier.weight(1f))
-                ProfileStat(R.drawable.ic8_trophy, "$bestStreak", "mejor racha (días)", Modifier.weight(1f))
+            // ---- Resumen: display:flex;gap:10px ----
+            Row(
+                Modifier.padding(top = 20.dp).fillMaxWidth().height(IntrinsicSize.Min),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                StatTile("$activeHabits", "Hábitos\nactivos", Mk.OliveTile, Mk.OliveDeep, Mk.OliveText, Modifier.weight(1f))
+                StatTile(
+                    if (state.cargandoLogros && state.logros.isEmpty()) "—" else "${state.obtenidos}",
+                    "Medallas\nobtenidas", Mk.AmberTile, Mk.AmberDeep, Mk.AmberText, Modifier.weight(1f)
+                )
+                StatTile("$bestStreak", "Mejor\nracha", Mk.Sand, Mk.Ink, Mk.SandText, Modifier.weight(1f))
             }
 
-            // ---- Cuenta ----
-            ProfileSection("Cuenta") {
-                ProfileRow(Icons.Outlined.Person, "Nombre", userName.ifBlank { "—" })
-                ProfileRow(
-                    Icons.Outlined.Email,
-                    "Correo",
-                    userEmail?.ifBlank { null } ?: "Vuelve a iniciar sesión para verlo"
+            // ---- Logros (API real) ----
+            SectionTitle("Logros")
+            LogrosSection(state, onRetry = viewModel::cargarLogros)
+
+            // ---- Lista tipo menú del mockup ----
+            Column(
+                Modifier
+                    .padding(top = 20.dp)
+                    .fillMaxWidth()
+                    .mockShadow(R28)
+                    .clip(R28)
+                    .background(Mk.Paper)
+            ) {
+                MenuRow(Icons.Outlined.Person, "Cuenta", trailing = userEmail?.ifBlank { null } ?: "—")
+                MenuDivider()
+                MenuRow(Icons.Outlined.Info, "Versión", trailing = version)
+                MenuDivider()
+                // Atribución exigida por la licencia gratuita de Icons8.
+                MenuRow(
+                    Icons.AutoMirrored.Outlined.OpenInNew,
+                    "Iconos por Icons8",
+                    trailing = "icons8.com",
+                    onClickLabel = "Abrir icons8.com",
+                    onClick = { uriHandler.openUri("https://icons8.com") }
+                )
+                MenuDivider()
+                MenuRow(
+                    Icons.AutoMirrored.Outlined.Logout,
+                    "Cerrar sesión",
+                    tint = Mk.Danger,
+                    onClick = { confirmLogout = true }
                 )
             }
-
-            // ---- Acerca de ----
-            ProfileSection("Acerca de Vitta") {
-                ProfileRow(Icons.Outlined.Info, "Versión", version)
-                // Atribución exigida por la licencia gratuita de Icons8.
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = 56.dp)
-                        .clickable(role = Role.Button, onClickLabel = "Abrir icons8.com") {
-                            uriHandler.openUri("https://icons8.com")
-                        }
-                        .padding(horizontal = VittaSpacing.Lg, vertical = VittaSpacing.Md),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Image(painterResource(R.drawable.ic8_paint_palette), contentDescription = null, modifier = Modifier.size(24.dp))
-                    Spacer(Modifier.width(VittaSpacing.Md))
-                    Column(Modifier.weight(1f)) {
-                        Text("Iconos por Icons8", style = VittaTextStyles.subtitle, color = VittaColorRoles.textPrimary)
-                        Text("icons8.com · licencia gratuita con atribución", style = VittaTextStyles.bodySmall, color = VittaColorRoles.textSecondary)
-                    }
-                    Icon(Icons.AutoMirrored.Outlined.OpenInNew, contentDescription = null, tint = VittaColorRoles.textSecondary)
-                }
-            }
-
-            // ---- Cerrar sesión ----
-            OutlinedButton(
-                onClick = { confirmLogout = true },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 54.dp),
-                shape = VittaShapes.pill,
-                border = BorderStroke(1.5.dp, VittaColors.Error),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = VittaColors.Error)
-            ) {
-                Icon(Icons.AutoMirrored.Outlined.Logout, contentDescription = null)
-                Spacer(Modifier.width(VittaSpacing.Sm))
-                Text("Cerrar sesión", style = VittaTextStyles.button)
-            }
-            Spacer(Modifier.height(VittaSpacing.Lg))
         }
     }
 
     if (confirmLogout) {
         AlertDialog(
             onDismissRequest = { confirmLogout = false },
-            containerColor = VittaColorRoles.surface,
-            titleContentColor = VittaColorRoles.textPrimary,
-            textContentColor = VittaColorRoles.textSecondary,
-            icon = { Icon(Icons.AutoMirrored.Outlined.Logout, contentDescription = null, tint = VittaColors.Error) },
-            title = { Text("¿Deseas cerrar sesión?", style = VittaTextStyles.title) },
-            text = { Text("Tus hábitos quedan guardados en tu cuenta. Podrás volver a entrar cuando quieras.", style = VittaTextStyles.body) },
+            containerColor = Mk.Paper,
+            shape = R28,
+            icon = { Icon(Icons.AutoMirrored.Outlined.Logout, contentDescription = null, tint = Mk.Danger) },
+            title = { Text("¿Deseas cerrar sesión?", style = caprasimo(21f, 1.15f, -0.015f), color = Mk.Ink) },
+            text = {
+                Text(
+                    "Tus hábitos quedan guardados en tu cuenta. Podrás volver a entrar cuando quieras.",
+                    style = figtree(500, 13.5f, 1.5f),
+                    color = Mk.Body
+                )
+            },
             dismissButton = {
-                TextButton(
-                    onClick = { confirmLogout = false },
-                    colors = ButtonDefaults.textButtonColors(contentColor = VittaColorRoles.textSecondary)
-                ) { Text("Cancelar", style = VittaTextStyles.button) }
+                TextButton(onClick = { confirmLogout = false }) {
+                    Text("Cancelar", style = figtree(600, 14.5f), color = Mk.SandText)
+                }
             },
             confirmButton = {
-                TextButton(
-                    onClick = {
-                        confirmLogout = false
-                        onLogout()
-                    },
-                    colors = ButtonDefaults.textButtonColors(contentColor = VittaColors.Error)
-                ) { Text("Cerrar sesión", style = VittaTextStyles.button) }
+                TextButton(onClick = { confirmLogout = false; onLogout() }) {
+                    Text("Cerrar sesión", style = figtree(600, 14.5f), color = Mk.Danger)
+                }
             }
         )
     }
 }
 
+/** h3: Caprasimo 17px, letter-spacing -.015em, margin 26px 2px 12px. */
 @Composable
-private fun ProfileStat(icon: Int, value: String, label: String, modifier: Modifier) {
+private fun SectionTitle(text: String) {
+    Text(
+        text,
+        style = caprasimo(17f, 1.2f, -0.015f),
+        color = Mk.Ink,
+        modifier = Modifier.padding(start = 2.dp, end = 2.dp, top = 26.dp, bottom = 12.dp).semantics { heading() }
+    )
+}
+
+/** flex:1;border-radius:24px;padding:16px 14px — número Caprasimo 25px + etiqueta Figtree 600 11.5px. */
+@Composable
+private fun StatTile(value: String, label: String, bg: Color, valueColor: Color, labelColor: Color, modifier: Modifier) {
     Column(
-        modifier = modifier
+        modifier
             .fillMaxHeight()
-            .background(VittaColorRoles.surface, VittaShapes.large)
-            .border(1.dp, VittaColorRoles.border, VittaShapes.large)
-            .padding(VittaSpacing.Md)
-            .semantics(mergeDescendants = true) {},
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+            .background(bg, R24)
+            .padding(horizontal = 14.dp, vertical = 16.dp)
+            .semantics(mergeDescendants = true) {}
     ) {
-        Image(painterResource(icon), contentDescription = null, modifier = Modifier.size(28.dp))
-        Spacer(Modifier.height(VittaSpacing.Xs))
-        Text(value, style = VittaTextStyles.heading, color = VittaColorRoles.textPrimary)
-        Text(label, style = VittaTextStyles.caption, color = VittaColorRoles.textMuted)
+        Text(value, style = caprasimo(25f, 1f), color = valueColor)
+        Text(label, style = figtree(600, 11.5f, 1.3f), color = labelColor, modifier = Modifier.padding(top = 6.dp))
     }
 }
 
 @Composable
-private fun ProfileSection(title: String, content: @Composable ColumnScope.() -> Unit) {
-    Column {
-        Text(
-            title,
-            style = VittaTextStyles.subtitle,
-            color = VittaColorRoles.textSecondary,
-            modifier = Modifier
-                .padding(start = VittaSpacing.Xs, bottom = VittaSpacing.Sm)
-                .semantics { heading() }
+private fun LogrosSection(state: ProfileUiState, onRetry: () -> Unit) {
+    when {
+        state.cargandoLogros && state.logros.isEmpty() -> Box(
+            Modifier.fillMaxWidth().padding(vertical = 24.dp),
+            contentAlignment = Alignment.Center
+        ) { CircularProgressIndicator(color = Mk.Olive, modifier = Modifier.size(32.dp)) }
+
+        state.errorLogros != null && state.logros.isEmpty() -> Column(
+            Modifier.fillMaxWidth().mockShadow(R28).background(Mk.Paper, R28).padding(horizontal = 22.dp, vertical = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(state.errorLogros, style = figtree(500, 13.5f, 1.5f), color = Mk.Body, textAlign = TextAlign.Center)
+            TextButton(onClick = onRetry) { Text("Reintentar", style = figtree(600, 14.5f), color = Mk.Olive) }
+        }
+
+        state.logros.isEmpty() -> Text(
+            "Todavía no hay medallas disponibles.",
+            style = figtree(400, 14f, 1.5f),
+            color = Mk.Body
         )
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(VittaColorRoles.surface, VittaShapes.large)
-                .border(1.dp, VittaColorRoles.border, VittaShapes.large),
-            content = content
-        )
+
+        else -> Column {
+            Text(
+                "${enPalabras(state.obtenidos, mayuscula = true)} de ${enPalabras(state.logros.size)} medallas desbloqueadas. " +
+                    "Las bloqueadas muestran lo que falta.",
+                style = figtree(400, 14f, 1.5f),
+                color = Mk.Body,
+                modifier = Modifier.widthIn(max = 300.dp)
+            )
+            val ultima = state.ultima
+            val cercana = state.masCercana
+            if (ultima != null) UltimaMedallaCard(ultima)
+            else if (cercana != null) MasCercanaCard(cercana)
+
+            if (state.constancia.isNotEmpty()) {
+                SectionTitle("Constancia")
+                MedallasGrid(state.constancia)
+            }
+            if (state.areas.isNotEmpty()) {
+                SectionTitle("Áreas")
+                MedallasGrid(state.areas)
+            }
+        }
     }
 }
 
+/** Tarjeta oscura "Última medalla" (background:#2D403E;border-radius:28px;padding:20px;gap:16px). */
 @Composable
-private fun ProfileRow(icon: ImageVector, label: String, value: String) {
+private fun UltimaMedallaCard(logro: LogroUi) {
     Row(
-        modifier = Modifier
+        Modifier.padding(top = 16.dp).fillMaxWidth().background(Mk.Night, R28).padding(20.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        InsigniaImage(logro.insignia, bloqueada = false, size = 72.dp)
+        Spacer(Modifier.width(16.dp))
+        Column(Modifier.weight(1f)) {
+            Text("ÚLTIMA MEDALLA", style = figtree(600, 11f, 1f, 0.09f), color = Mk.Amber)
+            Text(logro.nombre, style = caprasimo(19f, 1.15f), color = Mk.NightText, modifier = Modifier.padding(top = 7.dp))
+            Text(
+                "${logro.condicion} · +${logro.puntosBonus} VitaPuntos",
+                style = figtree(500, 12.5f, 1.4f),
+                color = Mk.NightSub,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+        }
+        // <img vitta width:74px;margin:-10px -6px -20px 0>
+        VittaMascot(
+            state = MascotState.Strong,
+            size = MascotSize.Small,
+            modifier = Modifier.offset(x = 6.dp, y = 8.dp)
+        )
+    }
+}
+
+/** Estado vacío del mockup: "La más cercana" (background:#FFFCF8;border-radius:28px;padding:26px 22px). */
+@Composable
+private fun MasCercanaCard(logro: LogroUi) {
+    Column(
+        Modifier.padding(top = 18.dp).fillMaxWidth().mockShadow(R28).background(Mk.Paper, R28)
+            .padding(horizontal = 22.dp, vertical = 26.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        InsigniaImage(logro.insignia, bloqueada = true, size = 92.dp)
+        Text("LA MÁS CERCANA", style = figtree(600, 11f, 1f, 0.09f), color = Mk.Faint, modifier = Modifier.padding(top = 16.dp))
+        Text(logro.nombre, style = caprasimo(22f, 1.15f, -0.015f), color = Mk.Ink, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 9.dp))
+        Text(logro.condicion, style = figtree(500, 13.5f, 1.5f), color = Mk.Body, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 9.dp))
+        Row(
+            Modifier.padding(top = 14.dp).background(Mk.AmberTile, Pill).padding(horizontal = 15.dp, vertical = 7.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("+${logro.puntosBonus}", style = caprasimo(14f, 1.2f), color = Mk.AmberInk)
+            Spacer(Modifier.width(7.dp))
+            Text("VitaPuntos", style = figtree(600, 12.5f), color = Mk.AmberDeep)
+        }
+    }
+}
+
+/** display:grid;grid-template-columns:repeat(2,1fr);gap:11px */
+@Composable
+private fun MedallasGrid(logros: List<LogroUi>) {
+    Column(verticalArrangement = Arrangement.spacedBy(11.dp)) {
+        logros.chunked(2).forEach { fila ->
+            Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(11.dp)) {
+                fila.forEach { MedallaCard(it, Modifier.weight(1f)) }
+                if (fila.size == 1) Spacer(Modifier.weight(1f))
+            }
+        }
+    }
+}
+
+/** Tarjeta `medalla()` del mockup. */
+@Composable
+private fun MedallaCard(logro: LogroUi, modifier: Modifier) {
+    val on = logro.obtenido
+    Column(
+        modifier
+            .fillMaxHeight()
+            .then(if (on) Modifier.mockShadow(R24) else Modifier)
+            .background(if (on) Mk.Paper else Mk.SandSoft, R24)
+            .padding(horizontal = 15.dp, vertical = 16.dp)
+            .semantics(mergeDescendants = true) {},
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        InsigniaImage(logro.insignia, bloqueada = !on, size = 62.dp)
+        Text(logro.nombre, style = figtree(700, 13.5f, 1.25f), color = Mk.Ink, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 10.dp))
+        Text(logro.condicion, style = figtree(500, 11.5f, 1.35f), color = Mk.Muted, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 4.dp))
+        Text(
+            "+${logro.puntosBonus} VitaPuntos",
+            style = figtree(700, 11f),
+            color = if (on) Mk.AmberDeep else Mk.Muted,
+            modifier = Modifier
+                .padding(top = 10.dp)
+                .background(if (on) Mk.AmberTile else Mk.Track, Pill)
+                .padding(horizontal = 11.dp, vertical = 4.dp)
+        )
+    }
+}
+
+/** Insignia SVG de `assets/vitta/insignias`; bloqueada = filter:grayscale(1) opacity(.38). */
+@Composable
+private fun InsigniaImage(insignia: Insignia, bloqueada: Boolean, size: Dp) {
+    val gris = remember { ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(0f) }) }
+    AsyncImage(
+        model = ImageRequest.Builder(LocalContext.current)
+            .data("file:///android_asset/" + VittaIconAssets.insignia(insignia.assetName))
+            .build(),
+        contentDescription = null,
+        modifier = Modifier.size(size),
+        contentScale = ContentScale.Fit,
+        alpha = if (bloqueada) 0.38f else 1f,
+        colorFilter = if (bloqueada) gris else null
+    )
+}
+
+/** Fila de la lista del mockup: min-height:62px;padding:0 18px;gap:14px; ícono #778661 21px. */
+@Composable
+private fun MenuRow(
+    icon: ImageVector,
+    label: String,
+    trailing: String? = null,
+    tint: Color = Mk.Olive,
+    onClickLabel: String? = null,
+    onClick: (() -> Unit)? = null
+) {
+    Row(
+        Modifier
             .fillMaxWidth()
-            .heightIn(min = 56.dp)
-            .padding(horizontal = VittaSpacing.Lg, vertical = VittaSpacing.Md)
+            .heightIn(min = 62.dp)
+            .then(if (onClick != null) Modifier.clickable(role = Role.Button, onClickLabel = onClickLabel, onClick = onClick) else Modifier)
+            .padding(horizontal = 18.dp)
             .semantics(mergeDescendants = true) {},
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(icon, contentDescription = null, tint = VittaColorRoles.textSecondary)
-        Spacer(Modifier.width(VittaSpacing.Md))
-        Text(label, style = VittaTextStyles.body, color = VittaColorRoles.textSecondary)
-        Spacer(Modifier.width(VittaSpacing.Md))
-        Text(
-            value,
-            style = VittaTextStyles.subtitle,
-            color = VittaColorRoles.textPrimary,
-            textAlign = androidx.compose.ui.text.style.TextAlign.End,
-            maxLines = 2,
-            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f)
-        )
+        Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(21.dp))
+        Spacer(Modifier.width(14.dp))
+        Text(label, style = figtree(600, 14.5f), color = if (tint == Mk.Danger) Mk.Danger else Mk.Ink)
+        Spacer(Modifier.width(14.dp))
+        if (trailing != null) {
+            Text(
+                trailing,
+                style = figtree(600, 13f),
+                color = Mk.Muted,
+                textAlign = TextAlign.End,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f)
+            )
+        } else {
+            Spacer(Modifier.weight(1f))
+        }
     }
+}
+
+@Composable
+private fun MenuDivider() = HorizontalDivider(thickness = 1.dp, color = Mk.Divider)
+
+/** "Siete de trece medallas…": el mockup escribe las cantidades en letras. */
+private fun enPalabras(n: Int, mayuscula: Boolean = false): String {
+    val palabras = listOf(
+        "cero", "una", "dos", "tres", "cuatro", "cinco", "seis", "siete", "ocho", "nueve", "diez",
+        "once", "doce", "trece", "catorce", "quince", "dieciséis", "diecisiete", "dieciocho", "diecinueve", "veinte"
+    )
+    val s = palabras.getOrNull(n) ?: n.toString()
+    return if (mayuscula) s.replaceFirstChar { it.uppercase() } else s
 }
