@@ -122,7 +122,7 @@ class ChecklistViewModel(
     /** Toca un vaso específico: fija el conteo ahí. Si llega a la meta, guarda de una vez. */
     fun onGlassTap(habitId: Int, index: Int) {
         val card = _uiState.value.cards.find { it.habit.id == habitId } ?: return
-        if (card.doneToday) return
+        if (card.doneToday || card.isSubmitting) return
         val nuevoValor = index + 1
         updateCard(habitId) { it.copy(pendingValue = nuevoValor) }
         if (card.metaTarget != null && nuevoValor >= card.metaTarget) {
@@ -133,6 +133,7 @@ class ChecklistViewModel(
     /** Botón "Todos": llena todo de una vez y guarda. */
     fun onMarkAll(habitId: Int) {
         val card = _uiState.value.cards.find { it.habit.id == habitId } ?: return
+        if (card.doneToday || card.isSubmitting) return
         val meta = card.metaTarget ?: 1
         updateCard(habitId) { it.copy(pendingValue = meta) }
         submit(habitId, meta)
@@ -141,7 +142,7 @@ class ChecklistViewModel(
     /** Botón "+N": suma el paso; si llega a la meta, guarda. */
     fun onQuickAdd(habitId: Int) {
         val card = _uiState.value.cards.find { it.habit.id == habitId } ?: return
-        if (card.doneToday) return
+        if (card.doneToday || card.isSubmitting) return
         val step = stepFor(card.metaUnidad)
         val nuevoValor = card.pendingValue + step
         updateCard(habitId) { it.copy(pendingValue = nuevoValor) }
@@ -153,22 +154,30 @@ class ChecklistViewModel(
     /** Hábito booleano (sin meta numérica): un solo toque lo completa. */
     fun onToggleBoolean(habitId: Int) {
         val card = _uiState.value.cards.find { it.habit.id == habitId } ?: return
-        if (card.doneToday) return
+        if (card.doneToday || card.isSubmitting) return
         submit(habitId, null)
     }
 
     private fun submit(habitId: Int, valor: Int?) {
+        // Evita envíos duplicados (dobles toques o toques en cola mientras la UI está ocupada).
+        val card = _uiState.value.cards.find { it.habit.id == habitId } ?: return
+        if (card.isSubmitting || card.doneToday) return
         updateCard(habitId) { it.copy(isSubmitting = true, errorMessage = null) }
         viewModelScope.launch {
             val fechaIso = Instant.now().truncatedTo(java.time.temporal.ChronoUnit.SECONDS).toString()
             when (val result = repository.createRecord(habitId, fechaIso, true, valor?.toDouble())) {
-                is CreateRecordResult.Success -> {
-                    val streakActual = when (val streak = repository.getStreak(habitId)) {
-                        is StreakResult.Success -> streak.streak.racha_actual
-                        is StreakResult.Error -> 0
-                    }
-                    updateCard(habitId) {
-                        it.copy(isSubmitting = false, doneToday = true, streakActual = streakActual)
+                is CreateRecordResult.Success, CreateRecordResult.AlreadyRegistered -> {
+                    // 409 = el registro de hoy ya existe en el servidor: el hábito está hecho,
+                    // así que se refleja igual que un guardado correcto (sin mensaje de error).
+                    updateCard(habitId) { it.copy(isSubmitting = false, doneToday = true, errorMessage = null) }
+                    val streak = repository.getStreak(habitId)
+                    if (streak is StreakResult.Success) {
+                        updateCard(habitId) {
+                            it.copy(
+                                streakActual = streak.streak.racha_actual,
+                                streakMax = maxOf(it.streakMax, streak.streak.racha_maxima)
+                            )
+                        }
                     }
                 }
                 is CreateRecordResult.Error -> {

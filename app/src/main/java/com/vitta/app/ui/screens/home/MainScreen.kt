@@ -13,6 +13,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.vitta.app.ui.components.navigation.VittaBottomNavBar
 import com.vitta.app.ui.components.navigation.VittaDestination
 import com.vitta.app.ui.screens.profile.ProfileScreen
+import com.vitta.app.ui.screens.progress.ProgressScreen
 import com.vitta.app.ui.theme.VittaColorRoles
 import com.vitta.app.ui.theme.VittaTextStyles
 import com.vitta.app.ui.screens.today.TodayScreen
@@ -56,7 +57,9 @@ fun MainScreen(
                 )
             }
             VittaDestination.Today -> TodayScreen(modifier)
-            VittaDestination.Progress -> ComingSoon("Progreso", modifier)
+            VittaDestination.Progress -> Box(modifier) {
+                ProgressScreen()
+            }
             VittaDestination.Achievements -> ComingSoon("Logros", modifier)
             VittaDestination.Profile -> Box(modifier) {
                 ProfileScreen(

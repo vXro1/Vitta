@@ -15,7 +15,7 @@ README específicos (enlazados en cada sección).
 | Tipografía | **Nunito en toda la app** (reemplaza a Caprasimo + Figtree) |
 | Paleta | Verde esmeralda, naranja, ámbar y fondos blanco-menta; se eliminó el beige grisáceo. Contrastes verificados (WCAG ≥ 4.5:1) |
 | Tema | Siempre claro (`VittaTheme(useDarkTheme = false)`): el modo oscuro del sistema producía texto claro sobre fondo claro |
-| Iconos | 167 iconos de **Icons8** (estilo "Color") con catálogo, categorías y búsqueda |
+| Iconos | 166 iconos de **Icons8** (estilo "Color") con catálogo, categorías y búsqueda |
 | Crear hábito | Flujo en 5 pasos: nombre → icono → meta (cantidad + unidad) → frecuencia → recordatorio (selector de hora Material 3) |
 | Editar hábito | Pantalla nueva, usa `PUT /api/habits/:id` (ya existía en el backend) |
 | Inicio | Dashboard con progreso del día, rachas, hábitos de hoy y de otros días |
@@ -32,11 +32,36 @@ README específicos (enlazados en cada sección).
 Repositorio hermano: `../Vitta-Plataforma-Web-de-Gesti-n-de-H-bitos-y-Gamificaci-n`
 (Node + Express + PostgreSQL).
 
+**Base de datos (PostgreSQL en Docker, puerto 5433).** Requiere Docker
+Desktop abierto. El contenedor `vitta-db` guarda los datos en el volumen
+`vitta_postgres_data` y se reinicia solo con Docker.
+
+```bash
+# Primera vez (usa el usuario/contraseña/base de DATABASE_URL del .env):
+docker run -d --name vitta-db --restart unless-stopped \
+  -e POSTGRES_USER=vitta -e POSTGRES_PASSWORD=<la del .env> -e POSTGRES_DB=vitta \
+  -p 5433:5432 -v vitta_postgres_data:/var/lib/postgresql/data postgres:16-alpine
+docker exec -i vitta-db psql -U vitta -d vitta < src/db/schema.sql
+
+# Días siguientes (si Docker estaba cerrado):
+docker start vitta-db
+```
+
+> Si el login muestra **"Error del servidor. Intenta de nuevo."** y la API
+> responde `{"error":"error interno"}`, casi siempre es la base: revisa que
+> Docker Desktop esté abierto y `docker ps` muestre `vitta-db`.
+>
+> Historia: hasta el 2026-10-04 la base se levantaba con un contenedor
+> temporal que se perdió al cerrarse Docker (junto con sus datos). Ese día
+> se creó `vitta-db` con volumen persistente y se recrearon los usuarios de
+> prueba de la sección 3.
+
+**API:**
+
 ```bash
 cd ../Vitta-Plataforma-Web-de-Gesti-n-de-H-bitos-y-Gamificaci-n
 cp .env.example .env          # ajustar DATABASE_URL y JWT_SECRET
 npm install
-psql "$DATABASE_URL" -f src/db/schema.sql   # solo la primera vez
 npm run dev                   # http://localhost:3000/api
 ```
 
@@ -60,9 +85,9 @@ Requisitos y problemas comunes: **README_INSTALACION.md**.
 
 ## 3. Usuarios de prueba
 
-Creados en la **base de datos local** de desarrollo el 2026-10-04. No
-existen en otros entornos: si tu BD está vacía, créalos con el comando de
-abajo.
+Creados en la **base de datos local** de desarrollo (`vitta-db`) el
+2026-10-04. No existen en otros entornos: si tu BD está vacía, créalos con
+el comando de abajo.
 
 | Nombre | Correo | Contraseña | Estado | Úsalo para probar |
 |---|---|---|---|---|
@@ -73,8 +98,8 @@ Hábitos de **Prueba Dos**:
 
 | id | Nombre | meta | frecuencia | Nota |
 |---|---|---|---|---|
-| 3 | Estirar | `10 minutos al día` | `Diaria` | Creado con el formato anterior de unidad (con "al día"); sirve para comprobar compatibilidad |
-| 4 | Meditar | `10 veces` | `L,X,D` | Solo aparece en "Hábitos de hoy" lunes, miércoles y domingo; los demás días va en "Otros días" |
+| 1 | Estirar | `10 minutos al día` | `Diaria` | Creado con el formato anterior de unidad (con "al día"); sirve para comprobar compatibilidad |
+| 2 | Meditar | `10 veces` | `L,X,D` | Solo aparece en "Hábitos de hoy" lunes, miércoles y domingo; los demás días va en "Otros días" |
 
 > Son credenciales **solo de desarrollo**. No reutilizar en ningún entorno
 > compartido ni en producción.
@@ -239,6 +264,9 @@ Tabla completa (problema → causa → endpoint → solución → impacto):
 ## 8. Iconos (Icons8)
 
 - Archivos: `res/drawable-nodpi/ic8_*.png` (PNG de 96 px, estilo "Color").
+- **La llama de racha NO es de Icons8:** es la ilustración propia de Vitta
+  (`assets/vitta/icons/icon_streak_flame.svg`, `VittaIconAssets.streakFlame`).
+  Úsala siempre que se muestre una racha.
 - Licencia gratuita: **atribución obligatoria** (ya está en Yo → "Iconos por
   Icons8"). **No se pueden modificar**: nada de `tint`, recolorear ni
   editarlos.
@@ -275,7 +303,21 @@ Con el backend corriendo y los usuarios de la sección 3:
 
 ---
 
-## 10. Trucos del emulador (útiles para automatizar con `adb`)
+## 10. Emulador
+
+- **RAM:** el AVD `Pixel_9` (Android 15 con Google Play) necesita al menos
+  **3 GB** (`hw.ramSize=3072` en `D:\Android\avd\Pixel_9.avd\config.ini`;
+  la copia original quedó en `config.ini.bak-2026-10-04`). Con 2 GB, Android
+  cerraba procesos, la interfaz del sistema se reiniciaba y la app quedaba
+  tapada por una pantalla negra o gris.
+- Si aparece "System UI isn't responding" justo después de arrancar, pulsa
+  **Esperar**: es el arranque en frío.
+- Cierra lo que no uses (otros contenedores de Docker, otros emuladores):
+  el PC tiene poca RAM libre con todo abierto.
+- Si la pantalla queda negra al abrir: arranca en frío
+  (`emulator -avd Pixel_9 -no-snapshot-load`).
+
+### Trucos para automatizar con `adb`
 
 - `adb shell input keyevent 111` (Escape) **escribe un "6"** en los campos
   de texto de este emulador. Para cerrar el teclado usa `keyevent 4` (Atrás).

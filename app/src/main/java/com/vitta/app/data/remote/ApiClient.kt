@@ -47,4 +47,5 @@ object ApiClient {
 
     val authApi: AuthApi = retrofit.create(AuthApi::class.java)
     val habitApi: HabitApi = retrofit.create(HabitApi::class.java)
+    val logroApi: LogroApi = retrofit.create(LogroApi::class.java)
 }

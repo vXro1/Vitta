@@ -31,6 +31,8 @@ sealed class RecordsResult {
 
 sealed class CreateRecordResult {
     data class Success(val record: RecordDto) : CreateRecordResult()
+    /** 409: el backend ya tiene un registro de ese hábito para ese día (UTC); el hábito ya está hecho. */
+    object AlreadyRegistered : CreateRecordResult()
     data class Error(val message: String) : CreateRecordResult()
 }
 
@@ -87,7 +89,8 @@ class HabitRepository {
             ApiClient.habitApi.createRecord(habitId, CreateRecordRequest(fecha, cumplido, valor))
         )
     } catch (e: HttpException) {
-        CreateRecordResult.Error(if (e.code() == 409) "Ya registraste este hábito hoy" else "No se pudo registrar (${e.code()})")
+        if (e.code() == 409) CreateRecordResult.AlreadyRegistered
+        else CreateRecordResult.Error("No se pudo registrar (${e.code()})")
     } catch (e: Exception) {
         CreateRecordResult.Error("No se pudo conectar.")
     }
