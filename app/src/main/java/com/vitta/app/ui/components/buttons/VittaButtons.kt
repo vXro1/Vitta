@@ -63,9 +63,9 @@ fun VittaPrimaryButton(
         colors = ButtonDefaults.buttonColors(
             containerColor = VittaColorRoles.primaryStrong,
             contentColor = VittaColorRoles.onPrimary,
-            // Deshabilitado: fondo neutro + texto legible (antes verde pálido con texto claro, casi invisible).
-            disabledContainerColor = VittaColorRoles.surfaceMuted,
-            disabledContentColor = VittaColorRoles.textMuted
+            // Deshabilitado: fondo neutro + texto legible. Cargando conserva el color normal.
+            disabledContainerColor = if (loading) VittaColorRoles.primaryStrong else VittaColorRoles.surfaceMuted,
+            disabledContentColor = if (loading) VittaColorRoles.onPrimary else VittaColorRoles.textMuted
         ),
         contentPadding = VittaButtonDefaults.ContentPadding
     ) {
@@ -122,7 +122,7 @@ fun VittaOutlinedButton(
         border = ButtonDefaults.outlinedButtonBorder(enabled).copy(width = 1.5.dp),
         colors = ButtonDefaults.outlinedButtonColors(
             contentColor = VittaColorRoles.textSecondary,
-            disabledContentColor = VittaColorRoles.textDisabled
+            disabledContentColor = if (loading) VittaColorRoles.textSecondary else VittaColorRoles.textDisabled
         ),
         contentPadding = VittaButtonDefaults.ContentPadding
     ) {

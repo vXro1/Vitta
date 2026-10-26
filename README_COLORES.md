@@ -85,6 +85,16 @@ blanco normal** (botón primario, píldora de nivel, chips y días
 seleccionados, check de hábito completado) usa `VittaColorRoles.primaryStrong`
 (= `GreenHover`, 5.0:1).
 
+## Terracota e íconos
+
+- La terracota (`OrangeAccent`) ya no se usa en la interfaz: enlaces y
+  etiquetas van en `GreenPressed`, las barras de hábitos en oliva, la barra
+  de nivel/VitaPuntos en amarillo (`GoldAccent`, son recompensas) y las
+  acciones destructivas (desmarcar, eliminar, cerrar sesión) en `Error`.
+- Los íconos de hábitos (Icons8, a color) se pintan con
+  `VittaIconTint.habit`: un duotono verde oscuro → oliva pálido que
+  conserva el dibujo y combina con la app.
+
 ## Dónde viven en el código
 
 - Valores crudos: `VittaColors` (`Color.kt`).

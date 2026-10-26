@@ -82,17 +82,6 @@ fun EditHabitScreen(
         }
     ) {
         HabitFormSection(title = "Nombre", step = 1) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                VittaHabitIconBubble(icon = state.icon, bubbleSize = 56.dp)
-                Spacer(Modifier.width(VittaSpacing.Md))
-                Text(
-                    "El ícono se elige automáticamente según el nombre del hábito.",
-                    style = VittaTextStyles.bodySmall,
-                    color = VittaColorRoles.textSecondary,
-                    modifier = Modifier.weight(1f)
-                )
-            }
-            Spacer(Modifier.height(VittaSpacing.Md))
             VittaAuthTextField(
                 value = state.nombre,
                 onValueChange = viewModel::onNombreChange,
@@ -105,7 +94,11 @@ fun EditHabitScreen(
             )
         }
 
-        HabitFormSection(title = "Meta", step = 2) {
+        HabitFormSection(title = "Ícono", step = 2) {
+            HabitIconPicker(selected = state.icon, onSelect = viewModel::onIconSelect)
+        }
+
+        HabitFormSection(title = "Meta", step = 3) {
             HabitGoalInput(
                 cantidad = state.metaValor,
                 onCantidadChange = viewModel::onMetaValorChange,
@@ -118,7 +111,7 @@ fun EditHabitScreen(
             )
         }
 
-        HabitFormSection(title = "Frecuencia", step = 3) {
+        HabitFormSection(title = "Frecuencia", step = 4) {
             HabitFrequencySelector(
                 diasEspecificos = state.diasEspecificos,
                 onModeChange = viewModel::onFrequencyModeChange,
@@ -133,12 +126,12 @@ fun EditHabitScreen(
             enabled = !state.isDeleting,
             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
         ) {
-            Icon(Icons.Outlined.Delete, contentDescription = null, tint = VittaColors.OrangeAccentHover)
+            Icon(Icons.Outlined.Delete, contentDescription = null, tint = VittaColors.Error)
             Spacer(Modifier.width(VittaSpacing.Xs))
             Text(
                 if (state.isDeleting) "Eliminando…" else "Eliminar hábito",
                 style = VittaTextStyles.button,
-                color = VittaColors.OrangeAccentHover
+                color = VittaColors.Error
             )
         }
     }
@@ -157,7 +150,7 @@ fun EditHabitScreen(
             },
             confirmButton = {
                 TextButton(onClick = { confirmDelete = false; viewModel.delete(onSaved) }) {
-                    Text("Eliminar", style = VittaTextStyles.button, color = VittaColors.OrangeAccentHover)
+                    Text("Eliminar", style = VittaTextStyles.button, color = VittaColors.Error)
                 }
             },
             dismissButton = {

@@ -12,7 +12,7 @@ import com.vitta.app.data.repository.HabitsResult
 import com.vitta.app.data.repository.RecordsResult
 import com.vitta.app.data.repository.StreakResult
 import com.vitta.app.ui.components.icons.HabitIcon
-import com.vitta.app.ui.components.icons.HabitIcons
+import com.vitta.app.ui.components.icons.HabitIconStore
 import com.vitta.app.ui.screens.habits.HabitTextFormat
 import com.vitta.app.ui.screens.habits.WeekDays
 import kotlinx.coroutines.async
@@ -126,7 +126,7 @@ class ChecklistViewModel(
 
         return HabitCardUiState(
             habit = habit,
-            icon = HabitIcons.forHabitName(habit.nombre) ?: HabitIcons.Default,
+            icon = HabitIconStore.iconFor(habit.id, habit.nombre),
             doneToday = doneToday,
             todayRecordId = todayRecord?.id,
             streakActual = streak?.racha_actual ?: 0,

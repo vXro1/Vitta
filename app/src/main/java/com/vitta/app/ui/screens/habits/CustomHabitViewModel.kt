@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.vitta.app.data.repository.CreateHabitResult
 import com.vitta.app.data.repository.HabitRepository
 import com.vitta.app.ui.components.icons.HabitIcon
+import com.vitta.app.ui.components.icons.HabitIconStore
 import com.vitta.app.ui.components.icons.HabitIcons
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -92,8 +93,7 @@ class CustomHabitViewModel(
             return
         }
 
-        // Nota: el icono y la hora del recordatorio NO se envían: el backend
-        // no tiene columnas para ellos (ver informe / README_RECURSOS.md).
+        // El backend no guarda el icono: se recuerda en el teléfono con HabitIconStore.
         _uiState.value = state.copy(isLoading = true, errorMessage = null)
         viewModelScope.launch {
             when (val result = repository.createHabit(
@@ -103,6 +103,7 @@ class CustomHabitViewModel(
                 tipo = "personalizado"
             )) {
                 is CreateHabitResult.Success -> {
+                    HabitIconStore.save(result.habit.id, state.icon)
                     _uiState.value = _uiState.value.copy(isLoading = false)
                     onSaved()
                 }

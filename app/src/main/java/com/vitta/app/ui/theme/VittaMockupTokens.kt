@@ -52,9 +52,9 @@ object Mk {
 
     // Ámbar / terracota
     val AmberTile = Color(0xFFFDEBCF)    // amarillo de marca muy claro
-    val AmberDeep = VittaColors.OrangeAccentHover
-    val AmberText = VittaColors.OrangeAccentHover
-    val AmberInk = VittaColors.OrangeAccent
+    val AmberDeep = VittaColors.TextPrimary
+    val AmberText = VittaColors.TextSecondary
+    val AmberInk = VittaColors.TextPrimary
     val Amber = VittaColors.GoldAccent
 
     // Tarjeta oscura
@@ -63,7 +63,7 @@ object Mk {
     val NightSub = VittaColors.GreenPale
     val NightTrack = VittaColors.Background.copy(alpha = 0.18f)
 
-    val Danger = VittaColors.OrangeAccentHover
+    val Danger = VittaColors.Error
 }
 
 val Caprasimo = FontFamily(Font(R.font.caprasimo_regular, FontWeight.Normal))

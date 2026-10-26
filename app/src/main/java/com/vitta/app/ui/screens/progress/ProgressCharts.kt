@@ -34,6 +34,8 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -48,6 +50,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -88,11 +91,19 @@ internal fun barColor(ratio: Float): Color = when {
     else -> Mk.OliveLight
 }
 
+/** Escala del mapa de calor: de arena (nada) a oliva profundo (todo cumplido). */
 internal fun heatColor(level: Int): Color = when (level) {
-    3 -> Mk.Olive
+    3 -> Mk.OliveDeep
     2 -> Mk.Heat2
     1 -> Mk.Heat1
     else -> Mk.Sand
+}
+
+/** Color del número del día sobre cada nivel (≥ 4.5:1 en todos). */
+private fun heatTextColor(level: Int): Color = when (level) {
+    3 -> Mk.NightText
+    -1 -> Mk.Chevron
+    else -> Mk.Ink
 }
 
 /** Contorno punteado (estado vacío / días que aún no llegan), como `border:1.5px dashed #DDD2BF`. */
@@ -333,8 +344,16 @@ private fun ChartLegend() {
 // Mapa de calor "Últimas cinco semanas" del mockup.
 // ---------------------------------------------------------------------------
 
+/**
+ * Mapa de calor de las últimas cinco semanas, como un calendario: cada celda
+ * muestra su día y al tocarla aparece el detalle (cumplidos / programados).
+ */
 @Composable
 internal fun HeatmapCard(cells: List<HeatCell>, modifier: Modifier = Modifier) {
+    val todayIndex = cells.indexOfFirst { it.isToday }.takeIf { it >= 0 } ?: cells.lastIndex
+    var picked by rememberSaveable { mutableIntStateOf(-1) }
+    val selected = if (picked in cells.indices) picked else todayIndex
+
     Column(
         modifier
             .fillMaxWidth()
@@ -342,55 +361,223 @@ internal fun HeatmapCard(cells: List<HeatCell>, modifier: Modifier = Modifier) {
             .background(Mk.Paper, Card28)
             .padding(20.dp)
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("Últimas cinco semanas", style = figtree(600, 13f), color = Mk.Body, modifier = Modifier.weight(1f))
-            Text("Menos", style = figtree(500, 11.5f), color = Mk.Muted)
-            Row(Modifier.padding(horizontal = 6.dp), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-                (0..3).forEach { Box(Modifier.size(10.dp).background(heatColor(it), RoundedCornerShape(3.dp))) }
-            }
-            Text("Más", style = figtree(500, 11.5f), color = Mk.Muted)
+        Text("Últimas cinco semanas", style = figtree(600, 13f), color = Mk.Body)
+        if (cells.isNotEmpty()) {
+            Text(
+                "${shortDate(cells.first())} – ${shortDate(cells.last())} · toca un día para ver el detalle",
+                style = figtree(500, 11.5f, 1.35f),
+                color = Mk.Muted,
+                modifier = Modifier.padding(top = 3.dp)
+            )
         }
-        Column(Modifier.padding(top = 14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            cells.chunked(7).forEach { week ->
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    week.forEach { cell -> HeatCellBox(cell, Modifier.weight(1f)) }
-                }
-            }
-        }
-        Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+
+        Row(Modifier.padding(top = 14.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             ProgressCalculator.DayLetters.forEach {
                 Text(
                     it,
-                    style = figtree(600, 10.5f),
-                    color = Mk.Faint,
+                    style = figtree(700, 11f),
+                    color = Mk.Muted,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.weight(1f)
                 )
             }
         }
+        Column(
+            Modifier.padding(top = 6.dp).selectableGroup(),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            cells.chunked(7).forEachIndexed { week, days ->
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    days.forEachIndexed { day, cell ->
+                        val index = week * 7 + day
+                        HeatCellBox(
+                            cell = cell,
+                            isSelected = index == selected,
+                            onClick = { picked = if (picked == index) -1 else index },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+            }
+        }
+
+        AnimatedContent(
+            targetState = cells.getOrNull(selected),
+            transitionSpec = { fadeIn(tween(180)) togetherWith fadeOut(tween(120)) },
+            label = "detalle-dia"
+        ) { cell -> if (cell != null) HeatDetail(cell) }
+
+        Row(
+            Modifier.padding(top = 14.dp).fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(Modifier.size(12.dp).border(2.5.dp, Mk.Amber, RoundedCornerShape(4.dp)))
+            Text("Hoy", style = figtree(500, 11.5f), color = Mk.Muted, modifier = Modifier.padding(start = 6.dp).weight(1f))
+            Text("Menos", style = figtree(500, 11.5f), color = Mk.Muted)
+            Row(Modifier.padding(horizontal = 6.dp), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                (0..3).forEach { Box(Modifier.size(12.dp).background(heatColor(it), RoundedCornerShape(4.dp))) }
+            }
+            Text("Más", style = figtree(500, 11.5f), color = Mk.Muted)
+        }
     }
 }
 
 @Composable
-private fun HeatCellBox(cell: HeatCell, modifier: Modifier) {
-    val shape = RoundedCornerShape(7.dp)
-    val label = when (cell.level) {
-        -1 -> "todavía no llega"
-        0 -> "sin hábitos cumplidos"
-        1 -> "menos de la mitad"
-        2 -> "más de la mitad"
-        else -> "todo cumplido"
-    }
+private fun HeatCellBox(cell: HeatCell, isSelected: Boolean, onClick: () -> Unit, modifier: Modifier) {
+    val shape = RoundedCornerShape(9.dp)
+    val background by animateColorAsState(
+        if (cell.level < 0) Color.Transparent else heatColor(cell.level),
+        label = "celda"
+    )
+    val scale by animateFloatAsState(if (isSelected) 1.08f else 1f, spring(dampingRatio = Spring.DampingRatioMediumBouncy), label = "zoom")
     Box(
         modifier
             .aspectRatio(1f)
+            .graphicsLayer { scaleX = scale; scaleY = scale }
+            .clip(shape)
+            .background(background, shape)
+            .then(if (cell.level < 0) Modifier.dashedOutline(Mk.Dashed, 9.dp, 1.dp) else Modifier)
             .then(
-                if (cell.level < 0) Modifier.dashedOutline(Mk.Dashed, 7.dp, 1.dp)
-                else Modifier.background(heatColor(cell.level), shape)
+                when {
+                    isSelected -> Modifier.border(2.dp, Mk.Ink, shape)
+                    cell.isToday -> Modifier.border(3.dp, Mk.Amber, shape)
+                    else -> Modifier
+                }
             )
-            .then(if (cell.isToday) Modifier.border(2.dp, Mk.Ink, shape) else Modifier)
-            .semantics { contentDescription = "${cell.date.dayOfMonth}/${cell.date.monthValue}: $label" + if (cell.isToday) ", hoy" else "" }
-    )
+            .selectable(selected = isSelected, role = Role.Tab, onClick = onClick)
+            .semantics { contentDescription = "${dayLabel(cell)}: ${heatSummary(cell)}" + if (cell.isToday) ", hoy" else "" },
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            "${cell.date.dayOfMonth}",
+            style = figtree(if (cell.isToday || isSelected) 700 else 600, 12f, 1f),
+            color = heatTextColor(cell.level)
+        )
+    }
+}
+
+@Composable
+private fun HeatDetail(cell: HeatCell) {
+    Column(
+        Modifier
+            .padding(top = 14.dp)
+            .fillMaxWidth()
+            .background(Mk.SandSoft, RoundedCornerShape(16.dp))
+            .padding(horizontal = 14.dp, vertical = 12.dp)
+    ) {
+        HeatDetailHeader(cell)
+        if (cell.level >= 0 && cell.scheduled > 0) {
+            Text(
+                "Hábitos que tocaban ese día",
+                style = figtree(600, 11.5f),
+                color = Mk.Muted,
+                modifier = Modifier.padding(top = 12.dp, bottom = 6.dp)
+            )
+            cell.habitsDone.forEach { HabitDayRow(it.id, it.name, done = true) }
+            cell.habitsMissed.forEach { HabitDayRow(it.id, it.name, done = false) }
+        }
+    }
+}
+
+/** Una línea por hábito: ✓ cumplido (oliva) o círculo vacío (sin marcar). */
+@Composable
+private fun HabitDayRow(id: Int, name: String, done: Boolean) {
+    val icon = com.vitta.app.ui.components.icons.HabitIconStore.iconFor(id, name)
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+            .semantics(mergeDescendants = true) { contentDescription = "$name: " + if (done) "cumplido" else "sin marcar" },
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            Modifier
+                .size(22.dp)
+                .then(
+                    if (done) Modifier.background(Mk.OliveDeep, CircleShape)
+                    else Modifier.border(1.5.dp, Mk.Dashed, CircleShape)
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            if (done) {
+                androidx.compose.material3.Icon(
+                    androidx.compose.material.icons.Icons.Filled.Check,
+                    contentDescription = null,
+                    tint = Mk.NightText,
+                    modifier = Modifier.size(14.dp)
+                )
+            }
+        }
+        Spacer(Modifier.width(10.dp))
+        Image(
+            painterResource(icon.drawable),
+            contentDescription = null,
+            modifier = Modifier.size(20.dp).alpha(if (done) 1f else .5f),
+            colorFilter = com.vitta.app.ui.theme.VittaIconTint.habit
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(
+            name,
+            style = figtree(if (done) 600 else 500, 13.5f),
+            color = if (done) Mk.Ink else Mk.Muted,
+            modifier = Modifier.weight(1f),
+            maxLines = 1
+        )
+        Text(
+            if (done) "Cumplido" else "Sin marcar",
+            style = figtree(600, 11.5f),
+            color = if (done) Mk.OliveDeep else Mk.Muted
+        )
+    }
+}
+
+@Composable
+private fun HeatDetailHeader(cell: HeatCell) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            Modifier
+                .size(12.dp)
+                .then(
+                    if (cell.level < 0) Modifier.dashedOutline(Mk.Dashed, 4.dp, 1.dp)
+                    else Modifier.background(heatColor(cell.level), RoundedCornerShape(4.dp))
+                )
+        )
+        Spacer(Modifier.width(10.dp))
+        Column(Modifier.weight(1f)) {
+            Text(dayLabel(cell) + if (cell.isToday) " · hoy" else "", style = figtree(600, 13f), color = Mk.Ink)
+            if (cell.scheduled > 0 && cell.level >= 0) {
+                Box(
+                    Modifier
+                        .padding(top = 6.dp)
+                        .fillMaxWidth()
+                        .height(5.dp)
+                        .clip(Pill)
+                        .background(Mk.HabitTrack)
+                ) {
+                    Box(Modifier.fillMaxWidth(cell.ratio).fillMaxHeight().background(Mk.Olive, Pill))
+                }
+            }
+        }
+        Spacer(Modifier.width(12.dp))
+        Text(
+            heatSummary(cell),
+            style = figtree(700, 13f),
+            color = if (cell.level < 0 || cell.scheduled == 0) Mk.Muted else Mk.OliveDeep
+        )
+    }
+}
+
+private fun dayLabel(cell: HeatCell): String =
+    "${ProgressCalculator.DayNames[cell.date.dayOfWeek.value - 1]} ${cell.date.dayOfMonth} de " +
+        ProgressCalculator.MonthNames[cell.date.monthValue - 1]
+
+private fun shortDate(cell: HeatCell): String =
+    "${cell.date.dayOfMonth} ${ProgressCalculator.MonthNames[cell.date.monthValue - 1].take(3)}"
+
+private fun heatSummary(cell: HeatCell): String = when {
+    cell.level < 0 -> "Todavía no llega"
+    cell.scheduled == 0 -> "Sin hábitos"
+    else -> "${cell.done} de ${cell.scheduled} hábitos"
 }
 
 // ---------------------------------------------------------------------------
@@ -399,7 +586,7 @@ private fun HeatCellBox(cell: HeatCell, modifier: Modifier) {
 
 @Composable
 internal fun HabitTrendRow(trend: HabitTrend, modifier: Modifier = Modifier) {
-    val icon = HabitIcons.forHabitName(trend.name) ?: HabitIcons.Default
+    val icon = com.vitta.app.ui.components.icons.HabitIconStore.iconFor(trend.id, trend.name)
     val fill = remember(trend) { Animatable(0f) }
     LaunchedEffect(trend) { fill.animateTo(trend.ratio, tween(650, easing = MockEase)) }
     val pct = (trend.ratio * 100).roundToInt()
@@ -415,7 +602,12 @@ internal fun HabitTrendRow(trend: HabitTrend, modifier: Modifier = Modifier) {
             },
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Image(painterResource(icon.drawable), contentDescription = null, modifier = Modifier.size(26.dp).alpha(.85f))
+        Image(
+            painterResource(icon.drawable),
+            contentDescription = null,
+            modifier = Modifier.size(26.dp),
+            colorFilter = com.vitta.app.ui.theme.VittaIconTint.habit
+        )
         Spacer(Modifier.width(13.dp))
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.Bottom) {

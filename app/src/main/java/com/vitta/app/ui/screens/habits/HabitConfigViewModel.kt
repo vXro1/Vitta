@@ -97,6 +97,7 @@ class HabitConfigViewModel(
                 tipo = habit.tipo
             )) {
                 is CreateHabitResult.Success -> {
+                    com.vitta.app.ui.components.icons.HabitIconStore.save(result.habit.id, habit.icon)
                     if (state.isLastHabit) {
                         _uiState.value = state.copy(isLoading = false, finished = true)
                         onAllSaved()

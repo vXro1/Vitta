@@ -85,7 +85,7 @@ object VittaColorRoles {
     val textMuted = VittaColors.TextMuted
     val textDisabled = VittaColors.TextFaint
 
-    val accent = VittaColors.OrangeAccent
+    val accent = VittaColors.GreenPressed
     val gold = VittaColors.GoldAccent
     val reminder = VittaColors.SkyAccent
 

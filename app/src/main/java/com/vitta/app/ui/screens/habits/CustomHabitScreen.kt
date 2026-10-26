@@ -39,7 +39,7 @@ fun CustomHabitScreen(
 
     HabitFormScaffold(
         title = "Nuevo hábito",
-        subtitle = "Créalo a tu medida en 3 pasos",
+        subtitle = "Créalo a tu medida en 4 pasos",
         onBack = onBack,
         bottomBar = {
             state.errorMessage?.let {
@@ -70,19 +70,15 @@ fun CustomHabitScreen(
             )
         }
 
-        // El icono se deduce del nombre (el backend no guarda icono), así que se muestra el que se usará.
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            VittaHabitIconBubble(icon = HabitIcons.forHabitName(state.nombre) ?: HabitIcons.Default, bubbleSize = 56.dp)
-            Spacer(Modifier.width(VittaSpacing.Md))
-            Text(
-                "El ícono se elige automáticamente según el nombre del hábito.",
-                style = VittaTextStyles.bodySmall,
-                color = VittaColorRoles.textSecondary,
-                modifier = Modifier.weight(1f)
-            )
+        HabitFormSection(
+            title = "Ícono",
+            step = 2,
+            supportingText = "Te sugerimos uno según el nombre. Toca otro para cambiarlo o “Más” para ver todos."
+        ) {
+            HabitIconPicker(selected = state.icon, onSelect = viewModel::onIconSelect)
         }
 
-        HabitFormSection(title = "Meta", step = 2, supportingText = "¿Cuánto quieres lograr cada vez?") {
+        HabitFormSection(title = "Meta", step = 3, supportingText = "¿Cuánto quieres lograr cada vez?") {
             HabitGoalInput(
                 cantidad = state.metaValor,
                 onCantidadChange = viewModel::onMetaValorChange,
@@ -95,7 +91,7 @@ fun CustomHabitScreen(
             )
         }
 
-        HabitFormSection(title = "Frecuencia", step = 3) {
+        HabitFormSection(title = "Frecuencia", step = 4) {
             HabitFrequencySelector(
                 diasEspecificos = state.diasEspecificos,
                 onModeChange = viewModel::onFrequencyModeChange,

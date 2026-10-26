@@ -53,7 +53,8 @@ class HabitRecordsProgressSource(
             }.toSet(),
             completedDays = completed,
             bestStreak = maxOf(streakMax, ProgressCalculator.longestRun(completed)),
-            startDate = utcDay(habit.creado_en)
+            // Un registro implica que el hábito ya existía ese día, aunque se haya creado después.
+            startDate = listOfNotNull(utcDay(habit.creado_en), completed.minOrNull()).minOrNull()
         )
     }
 
