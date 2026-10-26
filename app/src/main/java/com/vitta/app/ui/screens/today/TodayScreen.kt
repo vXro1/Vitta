@@ -1,157 +1,185 @@
 package com.vitta.app.ui.screens.today
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material3.Icon
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import com.vitta.app.ui.components.auth.VittaAuthErrorBanner
+import com.vitta.app.ui.components.buttons.VittaPrimaryButton
 import com.vitta.app.ui.components.mascot.MascotSize
 import com.vitta.app.ui.components.mascot.MascotState
 import com.vitta.app.ui.components.mascot.VittaMascot
+import com.vitta.app.ui.screens.home.AddHabitButton
+import com.vitta.app.ui.screens.home.ChecklistViewModel
+import com.vitta.app.ui.screens.home.HabitCardUiState
+import com.vitta.app.ui.screens.home.HabitDashboardCard
+import com.vitta.app.ui.screens.home.UndoRecordDialog
 import com.vitta.app.ui.theme.VittaColorRoles
 import com.vitta.app.ui.theme.VittaColors
 import com.vitta.app.ui.theme.VittaShapes
 import com.vitta.app.ui.theme.VittaSpacing
 import com.vitta.app.ui.theme.VittaTextStyles
 
-// Datos de ejemplo hasta conectar con el backend
-private data class TodayHabit(val name: String, val detail: String, val action: String)
-
-private data class TodaySection(val title: String, val range: String, val habits: List<TodayHabit>)
-
-private val sampleSections = listOf(
-    TodaySection(
-        "Mañana", "06:00 – 12:00",
-        listOf(
-            TodayHabit("Tomar agua", "Vas 3 de 8 vasos", "Todos"),
-            TodayHabit("Hacer yoga", "10 minutos · 07:00", "Listo")
-        )
-    ),
-    TodaySection(
-        "Tarde", "12:00 – 19:00",
-        listOf(TodayHabit("Caminar", "4.120 de 6.000 pasos", "+1k"))
-    ),
-    TodaySection(
-        "Noche", "19:00 – 23:00",
-        listOf(TodayHabit("Leer", "15 de 20 minutos", "+5"))
-    )
-)
-
+/**
+ * Checklist del día con los hábitos reales programados para hoy, separados
+ * en pendientes y completados. Comparte el [ChecklistViewModel] con Inicio,
+ * así que marcar aquí se refleja allá al instante (y viceversa).
+ */
 @Composable
-fun TodayScreen(modifier: Modifier = Modifier) {
-    val allHabits = sampleSections.flatMap { it.habits }
-    var done by remember { mutableStateOf(setOf<String>()) }
-    val progress = if (allHabits.isEmpty()) 0f else done.size.toFloat() / allHabits.size
+fun TodayScreen(
+    viewModel: ChecklistViewModel,
+    onAddHabit: () -> Unit,
+    onEditHabit: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val state by viewModel.uiState.collectAsState()
+    var undoTarget by remember { mutableStateOf<HabitCardUiState?>(null) }
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(VittaSpacing.Lg),
-        verticalArrangement = Arrangement.spacedBy(VittaSpacing.Md)
-    ) {
-        Text("Checklist de hoy", style = VittaTextStyles.heading, color = VittaColorRoles.textPrimary)
+    if (state.isLoading) {
+        Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator(color = VittaColorRoles.primary)
+        }
+        return
+    }
 
-        VittaMascot(state = MascotState.Reader, size = MascotSize.Medium)
+    val today = state.todayCards
+    val pending = today.filterNot { it.doneToday }
+    val done = today.filter { it.doneToday }
+    val progress = if (today.isEmpty()) 0f else done.size.toFloat() / today.size
 
-        // Tarjeta de progreso
-        Column(
-            Modifier
-                .fillMaxWidth()
-                .background(VittaColors.Surface, VittaShapes.large)
-                .padding(VittaSpacing.Lg)
+    Box(modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+        LazyColumn(
+            modifier = Modifier.widthIn(max = 640.dp).fillMaxSize(),
+            contentPadding = PaddingValues(VittaSpacing.Lg),
+            verticalArrangement = Arrangement.spacedBy(VittaSpacing.Md)
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            item {
                 Text(
-                    "${done.size} de ${allHabits.size} hábitos registrados",
-                    style = VittaTextStyles.title,
-                    color = VittaColorRoles.textPrimary,
-                    modifier = Modifier.weight(1f)
-                )
-                Text(
-                    "${(progress * 100).toInt()}%",
+                    "Checklist de hoy",
                     style = VittaTextStyles.heading,
-                    color = VittaColorRoles.textSecondary
+                    color = VittaColorRoles.textPrimary,
+                    modifier = Modifier.semantics { heading() }
                 )
             }
+
+            state.errorMessage?.let { message ->
+                item {
+                    VittaAuthErrorBanner(message)
+                    Spacer(Modifier.height(VittaSpacing.Sm))
+                    VittaPrimaryButton(text = "Reintentar", onClick = viewModel::load)
+                }
+            }
+
+            item { ProgressCard(done = done.size, total = today.size, progress = progress) }
+
+            if (today.isEmpty() && state.errorMessage == null) {
+                item {
+                    Text(
+                        if (state.cards.isEmpty()) "Aún no tienes hábitos. Crea uno para empezar."
+                        else "Hoy no tienes hábitos programados. ¡Disfruta el descanso!",
+                        style = VittaTextStyles.body,
+                        color = VittaColorRoles.textSecondary
+                    )
+                }
+            }
+
+            if (pending.isNotEmpty()) {
+                item { SectionHeader("Pendientes", "${pending.size}") }
+                items(pending, key = { "p_${it.habit.id}" }) { card ->
+                    HabitDashboardCard(card, viewModel, onEdit = { onEditHabit(card.habit.id) }, onUndoRequest = { undoTarget = card })
+                }
+            }
+
+            if (done.isNotEmpty()) {
+                item { SectionHeader("Completados", "${done.size}") }
+                items(done, key = { "d_${it.habit.id}" }) { card ->
+                    HabitDashboardCard(card, viewModel, onEdit = { onEditHabit(card.habit.id) }, onUndoRequest = { undoTarget = card })
+                }
+            }
+
+            item { AddHabitButton(onAddHabit) }
+            item { Spacer(Modifier.height(VittaSpacing.Lg)) }
+        }
+    }
+
+    undoTarget?.let { card ->
+        UndoRecordDialog(
+            habitName = card.habit.nombre,
+            onConfirm = { viewModel.onUndo(card.habit.id); undoTarget = null },
+            onDismiss = { undoTarget = null }
+        )
+    }
+}
+
+@Composable
+private fun ProgressCard(done: Int, total: Int, progress: Float) {
+    val complete = total > 0 && done >= total
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .background(VittaColorRoles.surface, VittaShapes.large)
+            .padding(VittaSpacing.Lg),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(
+                when {
+                    total == 0 -> "Sin hábitos para hoy"
+                    complete -> "¡Día completo!"
+                    else -> "$done de $total hábitos registrados"
+                },
+                style = VittaTextStyles.title,
+                color = VittaColorRoles.textPrimary
+            )
+            Spacer(Modifier.height(VittaSpacing.Xxs))
+            Text(
+                "${(progress * 100).toInt()} % del día",
+                style = VittaTextStyles.bodySmall,
+                color = VittaColorRoles.textMuted
+            )
             Spacer(Modifier.height(VittaSpacing.Md))
             Box(
                 Modifier
                     .fillMaxWidth()
                     .height(8.dp)
                     .clip(CircleShape)
-                    .background(VittaColors.SurfaceVariant)
+                    .background(VittaColors.GreenTrack)
             ) {
                 Box(
                     Modifier
                         .fillMaxHeight()
                         .fillMaxWidth(progress.coerceIn(0f, 1f))
-                        .background(VittaColors.OrangeAccent)
+                        .background(VittaColors.GreenPrimary)
                 )
             }
         }
-
-        // Secciones: Mañana, Tarde y noche
-        sampleSections.forEach { section ->
-            Row(verticalAlignment = Alignment.Bottom) {
-                Text(section.title, style = VittaTextStyles.title, color = VittaColorRoles.textPrimary)
-                Spacer(Modifier.width(VittaSpacing.Sm))
-                Text(section.range, style = VittaTextStyles.bodySmall, color = VittaColorRoles.textMuted)
-            }
-            section.habits.forEach { habit ->
-                val isDone = habit.name in done
-                HabitRow(
-                    habit = habit,
-                    isDone = isDone,
-                    onToggle = { done = if (isDone) done - habit.name else done + habit.name }
-                )
-            }
-        }
-
-        Spacer(Modifier.height(VittaSpacing.Lg))
+        Spacer(Modifier.width(VittaSpacing.Md))
+        VittaMascot(
+            state = if (complete) MascotState.Strong else MascotState.GoodHabits,
+            size = MascotSize.Small
+        )
     }
 }
 
 @Composable
-private fun HabitRow(habit: TodayHabit, isDone: Boolean, onToggle: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(VittaColors.Surface, VittaShapes.large)
-            .padding(VittaSpacing.Md),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        // Círculo de check
-        Box(
-            modifier = Modifier
-                .size(44.dp)
-                .clip(CircleShape)
-                .background(if (isDone) VittaColors.OrangeAccent else VittaColors.Surface)
-                .border(BorderStroke(2.dp, VittaColors.SurfaceVariant), CircleShape)
-                .clickable { onToggle() },
-            contentAlignment = Alignment.Center
-        ) {
-            if (isDone) {
-                Icon(Icons.Filled.Check, contentDescription = "Hecho", tint = VittaColors.Surface)
-            }
-        }
-        Spacer(Modifier.width(VittaSpacing.Md))
-        Column(Modifier.weight(1f)) {
-            Text(habit.name, style = VittaTextStyles.title, color = VittaColorRoles.textPrimary)
-            Text(habit.detail, style = VittaTextStyles.bodySmall, color = VittaColorRoles.textMuted)
-        }
-        Text(habit.action, style = VittaTextStyles.label, color = VittaColors.OrangeAccent)
+private fun SectionHeader(title: String, count: String) {
+    Row(Modifier.padding(top = VittaSpacing.Sm), verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            title,
+            style = VittaTextStyles.title,
+            color = VittaColorRoles.textPrimary,
+            modifier = Modifier.weight(1f).semantics { heading() }
+        )
+        Text(count, style = VittaTextStyles.body, color = VittaColorRoles.textMuted)
     }
 }

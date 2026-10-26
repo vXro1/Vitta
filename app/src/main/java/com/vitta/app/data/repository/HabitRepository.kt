@@ -95,6 +95,30 @@ class HabitRepository {
         CreateRecordResult.Error("No se pudo conectar.")
     }
 
+    /** null = listo; texto = mensaje de error para mostrar. */
+    suspend fun deleteRecord(habitId: Int, registroId: Int): String? = try {
+        val response = ApiClient.habitApi.deleteRecord(habitId, registroId)
+        when {
+            response.isSuccessful || response.code() == 404 -> null
+            else -> "No se pudo desmarcar (${response.code()})"
+        }
+    } catch (e: Exception) {
+        "No se pudo conectar."
+    }
+
+    /** null = eliminado; texto = mensaje de error para mostrar. */
+    suspend fun deleteHabit(habitId: Int): String? = try {
+        val response = ApiClient.habitApi.deleteHabit(habitId)
+        when {
+            response.isSuccessful -> null
+            response.code() == 409 ->
+                "Este hábito ya tiene registros y Vitta conserva tu historial, por eso no se puede eliminar."
+            else -> "No se pudo eliminar (${response.code()})"
+        }
+    } catch (e: Exception) {
+        "No se pudo conectar. Revisa tu conexión."
+    }
+
     suspend fun getStreak(habitId: Int): StreakResult = try {
         StreakResult.Success(ApiClient.habitApi.getStreak(habitId))
     } catch (e: HttpException) {

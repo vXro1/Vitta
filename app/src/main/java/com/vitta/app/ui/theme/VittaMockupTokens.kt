@@ -14,56 +14,56 @@ import androidx.compose.ui.unit.sp
 import com.vitta.app.R
 
 /**
- * Colores y tipografía tomados literalmente del maquetado
- * (`vitta-app-maquetado--main/index.html`). Los usan las pantallas que
- * reproducen el mockup al pie de la letra (Yo y Progreso) sin cambiar el
- * tema global ni el resto de pantallas.
+ * Nombres del maquetado (`vitta-app-maquetado--main/index.html`) para las
+ * pantallas que lo reproducen al pie de la letra (Progreso, Logros, Perfil).
+ * Todos apuntan a la paleta de marca de [VittaColors]; los pocos tonos que
+ * solo existen en el maquetado (pistas, contornos, fichas ámbar) se derivan
+ * de ella. Los textos usan tonos con contraste WCAG ≥ 4.5:1 sobre marfil.
  */
 object Mk {
     // Texto
-    val Ink = Color(0xFF2D403E)          // títulos y texto principal
-    val Body = Color(0xFF5C6A5B)         // párrafos / títulos de tarjeta
-    val Muted = Color(0xFF8A9283)        // subtítulos, condiciones
-    val Faint = Color(0xFFA9A493)        // etiquetas inactivas
-    val Chevron = Color(0xFFB8B0A0)
+    val Ink = VittaColors.TextPrimary
+    val Body = VittaColors.TextSecondary
+    val Muted = VittaColors.TextMuted          // el maquetado usaba #8A9283 (≈3:1)
+    val Faint = VittaColors.TextMuted          // solo se usa en textos que deben leerse
+    val Chevron = VittaColors.TextFaint
 
     // Superficies
-    val Screen = Color(0xFFF9F4EE)       // fondo de pantalla
-    val Paper = Color(0xFFFFFCF8)        // tarjetas
-    val Sand = Color(0xFFEFE6D6)         // avatar, selector, celda vacía
-    val SandSoft = Color(0xFFF4EFE4)     // medalla bloqueada / detalle
-    val Track = Color(0xFFE9E1D2)        // píldora bloqueada
+    val Screen = VittaColors.Background
+    val Paper = VittaColors.Surface
+    val Sand = VittaColors.SurfaceVariant
+    val SandSoft = VittaColors.SurfaceMuted
+    val Track = Color(0xFFE9E1D2)        // píldora bloqueada (derivado del marfil)
     val HabitTrack = Color(0xFFEDE4D4)   // pista de barra por hábito
-    val Dashed = Color(0xFFDDD2BF)       // contornos punteados (vacío / futuro)
-    val Divider = Color(0x122D403E)      // rgba(45,64,62,.07)
-    val Shadow = Color(0x0F2D403E)       // rgba(45,64,62,.06)
+    val Dashed = VittaColors.BorderSubtle
+    val Divider = VittaColors.TextPrimary.copy(alpha = 0.07f)
+    val Shadow = VittaColors.TextPrimary.copy(alpha = 0.06f)
 
     // Verde oliva
-    val Olive = Color(0xFF778661)        // íconos y barra completa
-    val OliveMid = Color(0xFF9CAA86)
-    val OliveLight = Color(0xFFC9D2B7)
-    val Heat1 = Color(0xFFD4DCC2)        // mapa de calor, nivel 1
-    val Heat2 = Color(0xFFA9B893)        // mapa de calor, nivel 2
-    val OliveTile = Color(0xFFEEF0E3)
-    val OliveDeep = Color(0xFF56633F)
-    val OliveText = Color(0xFF6B7768)
-    val SandText = Color(0xFF77826F)
+    val Olive = VittaColors.GreenPrimary
+    val OliveMid = VittaColors.GreenMid
+    val OliveLight = VittaColors.GreenPale
+    val Heat1 = VittaColors.GreenTrack
+    val Heat2 = VittaColors.GreenSoft
+    val OliveTile = VittaColors.SurfaceTint
+    val OliveDeep = VittaColors.GreenPressed
+    val OliveText = VittaColors.TextSecondary
+    val SandText = VittaColors.TextMuted
 
-    // Ámbar
-    val AmberTile = Color(0xFFFDEBCF)
-    val AmberDeep = Color(0xFF8C491A)
-    val AmberText = Color(0xFF8C6B3E)
-    val AmberInk = Color(0xFFA55729)
-    val Amber = Color(0xFFF1AA52)
+    // Ámbar / terracota
+    val AmberTile = Color(0xFFFDEBCF)    // amarillo de marca muy claro
+    val AmberDeep = VittaColors.OrangeAccentHover
+    val AmberText = VittaColors.OrangeAccentHover
+    val AmberInk = VittaColors.OrangeAccent
+    val Amber = VittaColors.GoldAccent
 
     // Tarjeta oscura
-    val Night = Color(0xFF2D403E)
-    val NightText = Color(0xFFF9F4EE)
-    val NightSub = Color(0xFFC3CDB1)
-    val NightTrack = Color(0x2EF9F4EE)   // rgba(249,244,238,.18)
+    val Night = VittaColors.ToastSurface
+    val NightText = VittaColors.Background
+    val NightSub = VittaColors.GreenPale
+    val NightTrack = VittaColors.Background.copy(alpha = 0.18f)
 
-    /** Cerrar sesión no existe en el mockup: se usa su marrón de advertencia más oscuro. */
-    val Danger = Color(0xFF7E3F1C)
+    val Danger = VittaColors.OrangeAccentHover
 }
 
 val Caprasimo = FontFamily(Font(R.font.caprasimo_regular, FontWeight.Normal))

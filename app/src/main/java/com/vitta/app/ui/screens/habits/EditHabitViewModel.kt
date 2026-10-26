@@ -27,7 +27,8 @@ data class EditHabitUiState(
     val unidadError: String? = null,
     val daysError: String? = null,
     val isSaving: Boolean = false,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val isDeleting: Boolean = false
 ) {
     val icon get() = HabitIcons.forHabitName(nombre) ?: HabitIcons.Default
 }
@@ -128,6 +129,17 @@ class EditHabitViewModel(
                     _uiState.value = _uiState.value.copy(isSaving = false, errorMessage = result.message)
                 }
             }
+        }
+    }
+
+    /** DELETE /api/habits/:id — el backend lo rechaza (409) si el hábito ya tiene historial. */
+    fun delete(onDeleted: () -> Unit) {
+        if (_uiState.value.isDeleting) return
+        _uiState.value = _uiState.value.copy(isDeleting = true, errorMessage = null)
+        viewModelScope.launch {
+            val error = repository.deleteHabit(habitId)
+            _uiState.value = _uiState.value.copy(isDeleting = false, errorMessage = error)
+            if (error == null) onDeleted()
         }
     }
 }

@@ -3,12 +3,15 @@ package com.vitta.app.ui.screens.profile
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.vitta.app.data.remote.dto.LogroDto
+import com.vitta.app.data.remote.dto.PerfilDto
+import com.vitta.app.data.repository.GamificationRepository
 import com.vitta.app.data.repository.LogroRepository
 import com.vitta.app.data.repository.LogrosResult
 import com.vitta.app.ui.components.progress.Insignia
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /** Un logro real (`GET /api/logros`) junto con la insignia SVG local que le corresponde. */
@@ -27,7 +30,9 @@ data class LogroUi(
 data class ProfileUiState(
     val cargandoLogros: Boolean = true,
     val errorLogros: String? = null,
-    val logros: List<LogroUi> = emptyList()
+    val logros: List<LogroUi> = emptyList(),
+    /** `GET /api/users/me`: nombre, correo, hábitos activos, medallas y VitaPuntos reales. */
+    val perfil: PerfilDto? = null
 ) {
     val obtenidos: Int get() = logros.count { it.obtenido }
     val constancia: List<LogroUi> get() = logros.filter { it.esRacha }
@@ -41,11 +46,18 @@ data class ProfileUiState(
 }
 
 class ProfileViewModel(
-    private val repository: LogroRepository = LogroRepository()
+    private val repository: LogroRepository = LogroRepository(),
+    private val gamification: GamificationRepository = GamificationRepository()
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ProfileUiState())
     val uiState: StateFlow<ProfileUiState> = _uiState.asStateFlow()
+
+    fun cargarPerfil() {
+        viewModelScope.launch {
+            gamification.perfil().onSuccess { perfil -> _uiState.update { it.copy(perfil = perfil) } }
+        }
+    }
 
     /** Se llama al abrir la pestaña "Yo" para reflejar logros recién ganados. */
     fun cargarLogros() {

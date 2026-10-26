@@ -1,14 +1,21 @@
 package com.vitta.app.ui.components.navigation
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.Role
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.EmojiEvents
@@ -49,8 +56,8 @@ enum class VittaDestination(
 }
 
 /**
- * The 5-tab bottom navigation bar. Purely visual in this phase — [onSelect]
- * is wired up but no screen navigation happens until real screens exist.
+ * Barra inferior de 5 pestañas: cada pestaña ocupa el mismo ancho (toda el
+ * área es tocable) y la seleccionada lleva una píldora oliva detrás del ícono.
  */
 @Composable
 fun VittaBottomNavBar(
@@ -58,33 +65,54 @@ fun VittaBottomNavBar(
     onSelect: (VittaDestination) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(VittaSizes.BottomNavHeight)
-            .background(VittaColorRoles.surface)
-            .padding(horizontal = 6.dp, vertical = 8.dp),
-        horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceEvenly
-    ) {
-        VittaDestination.entries.forEach { destination ->
-            val isSelected = destination == selected
-            Column(
-                modifier = Modifier
-                    .selectable(selected = isSelected, onClick = { onSelect(destination) })
-                    .padding(vertical = 4.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Icon(
-                    imageVector = if (isSelected) destination.filledIcon else destination.outlinedIcon,
-                    contentDescription = destination.label,
-                    tint = if (isSelected) VittaColorRoles.primary else VittaColorRoles.textDisabled,
-                    modifier = Modifier.size(22.dp)
-                )
-                Text(
-                    text = destination.label,
-                    style = VittaTextStyles.caption,
-                    color = if (isSelected) VittaColorRoles.textPrimary else VittaColorRoles.textDisabled
-                )
+    Column(modifier.fillMaxWidth().background(VittaColorRoles.surface)) {
+        HorizontalDivider(thickness = 1.dp, color = VittaColorRoles.border)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(VittaSizes.BottomNavHeight)
+                .selectableGroup()
+                .padding(horizontal = 4.dp, vertical = 6.dp)
+        ) {
+            VittaDestination.entries.forEach { destination ->
+                val isSelected = destination == selected
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .clip(VittaShapes.medium)
+                        .selectable(
+                            selected = isSelected,
+                            role = Role.Tab,
+                            onClick = { onSelect(destination) }
+                        ),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Box(
+                        Modifier
+                            .width(52.dp)
+                            .height(30.dp)
+                            .background(
+                                if (isSelected) VittaColorRoles.surfaceTint else Color.Transparent,
+                                VittaShapes.pill
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = if (isSelected) destination.filledIcon else destination.outlinedIcon,
+                            contentDescription = null,
+                            tint = if (isSelected) VittaColorRoles.primaryPressed else VittaColorRoles.textMuted,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                    Text(
+                        text = destination.label,
+                        style = VittaTextStyles.caption,
+                        color = if (isSelected) VittaColorRoles.textPrimary else VittaColorRoles.textMuted,
+                        maxLines = 1
+                    )
+                }
             }
         }
     }

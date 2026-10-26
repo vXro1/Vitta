@@ -10,7 +10,7 @@ package com.vitta.app.data.progress
  * [ProgressSource] y se devuelve aquí.
  */
 object ProgressSources {
-    const val USE_SAMPLE_DATA = true
+    const val USE_SAMPLE_DATA = false
 
     fun default(): ProgressSource =
         if (USE_SAMPLE_DATA) SampleProgressSource() else HabitRecordsProgressSource()

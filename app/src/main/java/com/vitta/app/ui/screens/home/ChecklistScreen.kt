@@ -11,6 +11,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -72,12 +73,8 @@ fun ChecklistScreen(
         return
     }
 
-    // TODO: conectar con el backend cuando existan puntos y nivel.
-    val level = 5
-    val points = 1240
-    val levelName = "Impulsor"
-    val pointsToNext = 760
-    val levelProgress = 0.3f
+    var undoTarget by remember { mutableStateOf<HabitCardUiState?>(null) }
+    val points = state.points
 
     Box(Modifier.fillMaxSize().background(VittaColorRoles.background), contentAlignment = Alignment.TopCenter) {
         LazyColumn(
@@ -87,7 +84,7 @@ fun ChecklistScreen(
             contentPadding = PaddingValues(VittaSpacing.Lg),
             verticalArrangement = Arrangement.spacedBy(VittaSpacing.Md)
         ) {
-            item { HeaderBlock(userName = userName, level = level) }
+            item { HeaderBlock(userName = userName, level = points?.nivel) }
 
             state.errorMessage?.let { message ->
                 item {
@@ -95,6 +92,7 @@ fun ChecklistScreen(
                     Spacer(Modifier.height(VittaSpacing.Sm))
                     VittaPrimaryButton(text = "Reintentar", onClick = viewModel::load)
                 }
+                if (state.cards.isEmpty()) return@LazyColumn
             }
 
             if (state.errorMessage == null && state.cards.isEmpty()) {
@@ -102,18 +100,16 @@ fun ChecklistScreen(
                 return@LazyColumn
             }
 
-            if (state.cards.isNotEmpty()) {
-                item {
-                    HeroCard(
-                        doneCount = state.doneToday,
-                        totalCount = state.todayCards.size,
-                        racha = state.bestCurrentStreak,
-                        points = points,
-                        levelName = levelName,
-                        pointsToNext = pointsToNext,
-                        levelProgress = levelProgress
-                    )
-                }
+            item {
+                HeroCard(
+                    doneCount = state.doneToday,
+                    totalCount = state.todayCards.size,
+                    racha = state.bestCurrentStreak,
+                    points = points?.puntos_totales,
+                    levelName = points?.nombre_nivel,
+                    pointsToNext = points?.puntos_para_siguiente,
+                    levelProgress = points?.progresoNivel ?: 0f
+                )
             }
 
             item {
@@ -140,19 +136,15 @@ fun ChecklistScreen(
             }
 
             items(state.todayCards, key = { it.habit.id }) { card ->
-                HabitDashboardCard(card = card, viewModel = viewModel, onEdit = { onEditHabit(card.habit.id) })
+                HabitDashboardCard(
+                    card = card,
+                    viewModel = viewModel,
+                    onEdit = { onEditHabit(card.habit.id) },
+                    onUndoRequest = { undoTarget = card }
+                )
             }
 
-            item {
-                TextButton(
-                    onClick = onAddHabit,
-                    colors = ButtonDefaults.textButtonColors(contentColor = VittaColorRoles.primaryPressed)
-                ) {
-                    Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(VittaSpacing.Xxs))
-                    Text("Nuevo hábito", style = VittaTextStyles.button)
-                }
-            }
+            item { AddHabitButton(onAddHabit) }
 
             if (state.otherCards.isNotEmpty()) {
                 item {
@@ -162,28 +154,70 @@ fun ChecklistScreen(
                     )
                 }
                 items(state.otherCards, key = { "other_${it.habit.id}" }) { card ->
-                    HabitDashboardCard(card = card, viewModel = viewModel, onEdit = { onEditHabit(card.habit.id) })
+                    HabitDashboardCard(
+                        card = card,
+                        viewModel = viewModel,
+                        onEdit = { onEditHabit(card.habit.id) },
+                        onUndoRequest = { undoTarget = card }
+                    )
                 }
             }
-
-            // ---- Bloques de DashboardExtras.kt ----
-            item { SleepCard() }
-
-            item { SectionTitle(title = "Tus retos") }
-
-            items(sampleChallenges, key = { it.title }) { challenge ->
-                ChallengeCard(challenge)
-            }
-
-            item { StoreBanner(onClick = { /* TODO: navegar a la tienda */ }) }
 
             item { Spacer(Modifier.height(VittaSpacing.Xl)) }
         }
     }
+
+    undoTarget?.let { card ->
+        UndoRecordDialog(
+            habitName = card.habit.nombre,
+            onConfirm = { viewModel.onUndo(card.habit.id); undoTarget = null },
+            onDismiss = { undoTarget = null }
+        )
+    }
 }
 
 @Composable
-private fun HeaderBlock(userName: String, level: Int) {
+internal fun AddHabitButton(onAddHabit: () -> Unit) {
+    TextButton(
+        onClick = onAddHabit,
+        modifier = Modifier.heightIn(min = 48.dp),
+        colors = ButtonDefaults.textButtonColors(contentColor = VittaColorRoles.primaryPressed)
+    ) {
+        Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(VittaSpacing.Xxs))
+        Text("Nuevo hábito", style = VittaTextStyles.button)
+    }
+}
+
+/** Confirmación antes de desmarcar: borrar el registro también quita sus VitaPuntos. */
+@Composable
+internal fun UndoRecordDialog(habitName: String, onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = VittaColorRoles.surface,
+        title = { Text("¿Desmarcar \"$habitName\"?", style = VittaTextStyles.heading, color = VittaColorRoles.textPrimary) },
+        text = {
+            Text(
+                "Se borrará el registro de hoy y los 10 VitaPuntos que te dio. Tu racha se recalcula.",
+                style = VittaTextStyles.body,
+                color = VittaColorRoles.textSecondary
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text("Desmarcar", style = VittaTextStyles.button, color = VittaColors.OrangeAccentHover)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancelar", style = VittaTextStyles.button, color = VittaColorRoles.textSecondary)
+            }
+        }
+    )
+}
+
+@Composable
+private fun HeaderBlock(userName: String, level: Int?) {
     val today = remember {
         val locale = Locale("es", "ES")
         val date = LocalDate.now()
@@ -209,7 +243,7 @@ private fun HeaderBlock(userName: String, level: Int) {
                 modifier = Modifier.semantics { heading() }
             )
         }
-        LevelPill(level = level)
+        if (level != null) LevelPill(level = level)
     }
 }
 
@@ -217,11 +251,11 @@ private fun HeaderBlock(userName: String, level: Int) {
 private fun LevelPill(level: Int) {
     Row(
         modifier = Modifier
-            .background(VittaColorRoles.primary, VittaShapes.pill)
+            .background(VittaColorRoles.primaryStrong, VittaShapes.pill)
             .padding(horizontal = VittaSpacing.Md, vertical = VittaSpacing.Sm),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(Modifier.size(8.dp).background(VittaColors.OrangeAccent, CircleShape))
+        Box(Modifier.size(8.dp).background(VittaColors.GoldAccent, CircleShape))
         Spacer(Modifier.width(VittaSpacing.Xs))
         Text("Nivel $level", style = VittaTextStyles.caption, color = VittaColorRoles.onPrimary)
     }
@@ -232,9 +266,9 @@ private fun HeroCard(
     doneCount: Int,
     totalCount: Int,
     racha: Int,
-    points: Int,
-    levelName: String,
-    pointsToNext: Int,
+    points: Int?,
+    levelName: String?,
+    pointsToNext: Int?,
     levelProgress: Float
 ) {
     val sinHabitosHoy = totalCount == 0
@@ -312,14 +346,16 @@ private fun HeroCard(
                 )
                 HeroStat(
                     icon = { StatIcon(R.drawable.ic8_trophy) },
-                    value = formatPoints(points),
+                    value = points?.let(::formatPoints) ?: "—",
                     label = "VitaPuntos",
                     modifier = Modifier.weight(1f)
                 )
             }
 
-            Spacer(Modifier.height(VittaSpacing.Md))
-            LevelProgress(levelName = levelName, pointsToNext = pointsToNext, progress = levelProgress)
+            if (levelName != null) {
+                Spacer(Modifier.height(VittaSpacing.Md))
+                LevelProgress(levelName = levelName, pointsToNext = pointsToNext, progress = levelProgress)
+            }
         }
     }
 }
@@ -353,12 +389,12 @@ private fun StreakFlame(size: androidx.compose.ui.unit.Dp) {
 }
 
 @Composable
-private fun LevelProgress(levelName: String, pointsToNext: Int, progress: Float) {
+private fun LevelProgress(levelName: String, pointsToNext: Int?, progress: Float) {
     Column {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(levelName, style = VittaTextStyles.body, color = VittaColorRoles.textSecondary)
+            Text("Nivel: $levelName", style = VittaTextStyles.body, color = VittaColorRoles.textSecondary)
             Text(
-                "$pointsToNext para el siguiente nivel",
+                if (pointsToNext == null) "Nivel máximo" else "Faltan ${formatPoints(pointsToNext)} pts",
                 style = VittaTextStyles.bodySmall,
                 color = VittaColorRoles.textMuted
             )
@@ -440,11 +476,16 @@ private fun EmptyHabits(onAddHabit: () -> Unit) {
 }
 
 @Composable
-private fun HabitDashboardCard(card: HabitCardUiState, viewModel: ChecklistViewModel, onEdit: () -> Unit) {
+internal fun HabitDashboardCard(
+    card: HabitCardUiState,
+    viewModel: ChecklistViewModel,
+    onEdit: () -> Unit,
+    onUndoRequest: () -> Unit
+) {
     val subtitle = when {
         card.doneToday -> "Registrado hoy"
         card.esAgua && card.metaTarget != null -> "Vas ${card.pendingValue} de ${card.metaTarget} vasos"
-        card.metaTarget != null -> "${card.pendingValue} de ${card.metaTarget} ${card.metaUnidad}"
+        card.metaTarget != null -> "Vas ${card.pendingValue} de ${card.metaTarget} ${card.metaUnidad}"
         else -> card.habit.meta
     }
 
@@ -470,7 +511,12 @@ private fun HabitDashboardCard(card: HabitCardUiState, viewModel: ChecklistViewM
             )
             Spacer(Modifier.width(VittaSpacing.Md))
             // Tocar el nombre abre la edición del hábito.
-            Column(Modifier.weight(1f).clickable(onClick = onEdit)) {
+            Column(
+                Modifier
+                    .weight(1f)
+                    .clip(VittaShapes.small)
+                    .clickable(onClickLabel = "Editar hábito", onClick = onEdit)
+            ) {
                 Text(card.habit.nombre, style = VittaTextStyles.title, color = VittaColorRoles.textPrimary)
                 Spacer(Modifier.height(VittaSpacing.Xxs))
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -487,7 +533,7 @@ private fun HabitDashboardCard(card: HabitCardUiState, viewModel: ChecklistViewM
                 }
             }
             Spacer(Modifier.width(VittaSpacing.Sm))
-            TrailingAction(card = card, viewModel = viewModel)
+            TrailingAction(card = card, viewModel = viewModel, onUndoRequest = onUndoRequest)
         }
 
         if (!card.doneToday && card.metaTarget != null) {
@@ -514,30 +560,32 @@ private fun HabitDashboardCard(card: HabitCardUiState, viewModel: ChecklistViewM
 }
 
 @Composable
-private fun TrailingAction(card: HabitCardUiState, viewModel: ChecklistViewModel) {
+private fun TrailingAction(card: HabitCardUiState, viewModel: ChecklistViewModel, onUndoRequest: () -> Unit) {
     when {
-        card.doneToday -> {
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .background(VittaColorRoles.primary, CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    Icons.Filled.Check,
-                    contentDescription = "Completado",
-                    tint = VittaColorRoles.onPrimary,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-        }
-
         card.isSubmitting -> {
             CircularProgressIndicator(
                 modifier = Modifier.size(24.dp),
                 strokeWidth = 2.dp,
                 color = VittaColorRoles.primary
             )
+        }
+
+        card.doneToday -> {
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .background(VittaColorRoles.primaryStrong)
+                    .clickable(onClickLabel = "Desmarcar", onClick = onUndoRequest),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Filled.Check,
+                    contentDescription = "Completado. Toca para desmarcar",
+                    tint = VittaColorRoles.onPrimary,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
         }
 
         card.esAgua && card.metaTarget != null -> {
@@ -557,7 +605,7 @@ private fun TrailingAction(card: HabitCardUiState, viewModel: ChecklistViewModel
         }
 
         else -> {
-            OutlinedPill(text = "Listo", onClick = { viewModel.onToggleBoolean(card.habit.id) })
+            OutlinedPill(text = "Listo", onClick = { viewModel.onComplete(card.habit.id) })
         }
     }
 }

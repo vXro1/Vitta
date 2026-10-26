@@ -125,7 +125,7 @@ fun VittaDaySelector(
                     .weight(1f)
                     .size(40.dp)
                     .background(
-                        if (isSelected) VittaColorRoles.primary else VittaColorRoles.surfaceMuted,
+                        if (isSelected) VittaColorRoles.primaryStrong else VittaColorRoles.surfaceMuted,
                         CircleShape
                     )
                     .clickable { onDayToggle(index) },

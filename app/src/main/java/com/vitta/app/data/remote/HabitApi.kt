@@ -6,7 +6,9 @@ import com.vitta.app.data.remote.dto.HabitDto
 import com.vitta.app.data.remote.dto.RecordDto
 import com.vitta.app.data.remote.dto.StreakDto
 import com.vitta.app.data.remote.dto.UpdateHabitRequest
+import retrofit2.Response
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.POST
 import retrofit2.http.PUT
@@ -34,4 +36,12 @@ interface HabitApi {
 
     @GET("habits/{id}/streak")
     suspend fun getStreak(@Path("id") habitId: Int): StreakDto
+
+    /** Desmarcar: borra el registro y sus VitaPuntos y recalcula la racha. */
+    @DELETE("habits/{id}/records/{registroId}")
+    suspend fun deleteRecord(@Path("id") habitId: Int, @Path("registroId") registroId: Int): Response<Unit>
+
+    /** 409 si el hábito ya tiene historial (el backend no borra registros). */
+    @DELETE("habits/{id}")
+    suspend fun deleteHabit(@Path("id") habitId: Int): Response<Unit>
 }

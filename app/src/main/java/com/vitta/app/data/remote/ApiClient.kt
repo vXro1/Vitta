@@ -31,7 +31,13 @@ object ApiClient {
         val request = chain.request().newBuilder().apply {
             if (token != null) addHeader("Authorization", "Bearer $token")
         }.build()
-        chain.proceed(request)
+        val response = chain.proceed(request)
+        // Token vencido o inválido: se borra la sesión y la navegación vuelve a Login.
+        if (response.code == 401 && token != null) {
+            runBlocking { TokenManager(appContext).clearToken() }
+            SessionEvents.notifyExpired()
+        }
+        response
     }
 
     private val okHttpClient = OkHttpClient.Builder()
@@ -48,4 +54,5 @@ object ApiClient {
     val authApi: AuthApi = retrofit.create(AuthApi::class.java)
     val habitApi: HabitApi = retrofit.create(HabitApi::class.java)
     val logroApi: LogroApi = retrofit.create(LogroApi::class.java)
+    val gamificationApi: GamificationApi = retrofit.create(GamificationApi::class.java)
 }

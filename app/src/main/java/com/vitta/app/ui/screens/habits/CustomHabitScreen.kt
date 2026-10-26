@@ -7,6 +7,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -22,6 +23,7 @@ import com.vitta.app.ui.components.forms.VittaAuthTextField
 import com.vitta.app.ui.components.icons.HabitIcons
 import com.vitta.app.ui.theme.VittaColorRoles
 import com.vitta.app.ui.theme.VittaSpacing
+import com.vitta.app.ui.theme.VittaTextStyles
 
 /** Ancho máximo del formulario para que en tablets/horizontal no se estire. */
 internal val HabitFormMaxWidth = 560.dp
@@ -37,7 +39,7 @@ fun CustomHabitScreen(
 
     HabitFormScaffold(
         title = "Nuevo hábito",
-        subtitle = "Créalo a tu medida en 5 pasos",
+        subtitle = "Créalo a tu medida en 3 pasos",
         onBack = onBack,
         bottomBar = {
             state.errorMessage?.let {
@@ -68,24 +70,19 @@ fun CustomHabitScreen(
             )
         }
 
-        HabitFormSection(
-            title = "Icono",
-            step = 2,
-            supportingText = "Te sugerimos uno según el nombre. Toca “Más” para ver todo el catálogo."
-        ) {
-            HabitIconPicker(selected = state.icon, onSelect = viewModel::onIconSelect)
-            // El servidor no guarda el icono: al recargar se deduce del nombre.
-            val shownLater = HabitIcons.forHabitName(state.nombre) ?: HabitIcons.Default
-            if (state.nombre.isNotBlank() && shownLater.id != state.icon.id) {
-                Spacer(Modifier.height(VittaSpacing.Sm))
-                HabitInfoNote(
-                    "El servidor aún no guarda el icono elegido. En tu inicio este hábito " +
-                        "se verá con el icono “${shownLater.label}”, que es el que coincide con su nombre."
-                )
-            }
+        // El icono se deduce del nombre (el backend no guarda icono), así que se muestra el que se usará.
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            VittaHabitIconBubble(icon = HabitIcons.forHabitName(state.nombre) ?: HabitIcons.Default, bubbleSize = 56.dp)
+            Spacer(Modifier.width(VittaSpacing.Md))
+            Text(
+                "El ícono se elige automáticamente según el nombre del hábito.",
+                style = VittaTextStyles.bodySmall,
+                color = VittaColorRoles.textSecondary,
+                modifier = Modifier.weight(1f)
+            )
         }
 
-        HabitFormSection(title = "Meta", step = 3, supportingText = "¿Cuánto quieres lograr cada vez?") {
+        HabitFormSection(title = "Meta", step = 2, supportingText = "¿Cuánto quieres lograr cada vez?") {
             HabitGoalInput(
                 cantidad = state.metaValor,
                 onCantidadChange = viewModel::onMetaValorChange,
@@ -98,7 +95,7 @@ fun CustomHabitScreen(
             )
         }
 
-        HabitFormSection(title = "Frecuencia", step = 4) {
+        HabitFormSection(title = "Frecuencia", step = 3) {
             HabitFrequencySelector(
                 diasEspecificos = state.diasEspecificos,
                 onModeChange = viewModel::onFrequencyModeChange,
@@ -108,19 +105,9 @@ fun CustomHabitScreen(
             )
         }
 
-        HabitFormSection(title = "Recordatorio", step = 5) {
-            HabitReminderTimeField(time = state.reminderTime, onTimeChange = viewModel::onReminderChange)
-            Spacer(Modifier.height(VittaSpacing.Sm))
-            HabitInfoNote(ReminderNotSavedNote)
-        }
-
-        HabitInfoNote("Crear un hábito no otorga VitaPuntos. Los puntos llegan cuando registras cumplimiento.")
+        HabitInfoNote("Cada vez que cumplas este hábito ganarás 10 VitaPuntos.")
     }
 }
-
-/** Aviso honesto: el backend todavía no guarda icono ni hora (ver informe). */
-internal const val ReminderNotSavedNote =
-    "Por ahora la hora no se guarda en tu cuenta ni genera notificaciones: el servidor aún no tiene dónde almacenarla."
 
 /**
  * Esqueleto común de los formularios de hábito: cabecera con regreso,
