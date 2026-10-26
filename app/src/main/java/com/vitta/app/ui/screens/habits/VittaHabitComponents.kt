@@ -160,7 +160,7 @@ fun VittaWaterTracker(
 // Previews
 // ---------------------------------------------------------------------------
 
-@Preview(showBackground = true, backgroundColor = 0xFFF6FBF8)
+@Preview(showBackground = true, backgroundColor = 0xFFF9F4EE)
 @Composable
 private fun VittaHabitRowPreview() {
     VittaTheme {

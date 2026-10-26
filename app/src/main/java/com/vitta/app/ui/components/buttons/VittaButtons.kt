@@ -61,7 +61,7 @@ fun VittaPrimaryButton(
         enabled = enabled && !loading,
         shape = VittaShapes.pill,
         colors = ButtonDefaults.buttonColors(
-            containerColor = VittaColorRoles.primary,
+            containerColor = VittaColorRoles.primaryStrong,
             contentColor = VittaColorRoles.onPrimary,
             // Deshabilitado: fondo neutro + texto legible (antes verde pálido con texto claro, casi invisible).
             disabledContainerColor = VittaColorRoles.surfaceMuted,
@@ -224,7 +224,7 @@ private val VittaSpacingDefault = 8.dp
 // Previews
 // ---------------------------------------------------------------------------
 
-@Preview(showBackground = true, backgroundColor = 0xFFF6FBF8)
+@Preview(showBackground = true, backgroundColor = 0xFFF9F4EE)
 @Composable
 private fun VittaButtonsPreview() {
     VittaTheme {

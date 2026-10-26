@@ -4,9 +4,14 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import com.vitta.app.ui.theme.VittaColors
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -32,6 +37,7 @@ fun EditHabitScreen(
     val viewModel: EditHabitViewModel = viewModel(factory = EditHabitViewModelFactory(habitId))
     val state by viewModel.uiState.collectAsState()
     val focusManager = LocalFocusManager.current
+    var confirmDelete by remember { mutableStateOf(false) }
 
     when {
         state.isLoadingHabit -> {
@@ -80,7 +86,7 @@ fun EditHabitScreen(
                 VittaHabitIconBubble(icon = state.icon, bubbleSize = 56.dp)
                 Spacer(Modifier.width(VittaSpacing.Md))
                 Text(
-                    "El icono se elige automáticamente según el nombre (el servidor aún no guarda iconos).",
+                    "El ícono se elige automáticamente según el nombre del hábito.",
                     style = VittaTextStyles.bodySmall,
                     color = VittaColorRoles.textSecondary,
                     modifier = Modifier.weight(1f)
@@ -122,9 +128,43 @@ fun EditHabitScreen(
             )
         }
 
-        HabitInfoNote(
-            "La hora del recordatorio no aparece aquí porque el servidor todavía no la guarda; " +
-                "por eso no hay una hora previa que mostrar ni editar."
+        TextButton(
+            onClick = { confirmDelete = true },
+            enabled = !state.isDeleting,
+            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+        ) {
+            Icon(Icons.Outlined.Delete, contentDescription = null, tint = VittaColors.OrangeAccentHover)
+            Spacer(Modifier.width(VittaSpacing.Xs))
+            Text(
+                if (state.isDeleting) "Eliminando…" else "Eliminar hábito",
+                style = VittaTextStyles.button,
+                color = VittaColors.OrangeAccentHover
+            )
+        }
+    }
+
+    if (confirmDelete) {
+        AlertDialog(
+            onDismissRequest = { confirmDelete = false },
+            containerColor = VittaColorRoles.surface,
+            title = { Text("¿Eliminar \"${state.nombre}\"?", style = VittaTextStyles.heading, color = VittaColorRoles.textPrimary) },
+            text = {
+                Text(
+                    "Solo se pueden eliminar hábitos sin registros: Vitta nunca borra tu historial.",
+                    style = VittaTextStyles.body,
+                    color = VittaColorRoles.textSecondary
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { confirmDelete = false; viewModel.delete(onSaved) }) {
+                    Text("Eliminar", style = VittaTextStyles.button, color = VittaColors.OrangeAccentHover)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmDelete = false }) {
+                    Text("Cancelar", style = VittaTextStyles.button, color = VittaColorRoles.textSecondary)
+                }
+            }
         )
     }
 }

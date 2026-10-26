@@ -5,12 +5,10 @@ import androidx.compose.ui.graphics.Color
 /**
  * Every color Vitta uses.
  *
- * Paleta renovada (2026-10): el verde oliva y los beige/grises desaturados
- * del maquetado original se reemplazaron por una paleta fresca y viva
- * (verde esmeralda, naranja, ámbar y fondos blanco-menta). Los NOMBRES de
- * las constantes se mantienen para que todas las pantallas hereden el
- * cambio sin tocar cada una. Los contrastes de texto se verificaron con la
- * fórmula WCAG (ver README_COLORES.md).
+ * Paleta de marca (especificación UX v2.0): verde oliva #778661, amarillo
+ * #F1AA52, verde oscuro #2D403E, terracota #A55729 y marfil #F9F4EE, con los
+ * tonos derivados del maquetado original. Contrastes calculados con la
+ * fórmula WCAG 2.1 sobre el fondo marfil (ver README_COLORES.md).
  *
  * Screens and components must reference these constants (or the semantic
  * roles in [VittaColorRoles]) — never inline a `Color(0xFF...)` literal.
@@ -18,48 +16,48 @@ import androidx.compose.ui.graphics.Color
 object VittaColors {
 
     // ---- Brand green (primary actions, active nav, filled progress) ----
-    val GreenPrimary = Color(0xFF0A8754)   // buttons, active chip, progress fill (4.6:1 con blanco)
-    val GreenHover = Color(0xFF08774A)     // button hover
-    val GreenPressed = Color(0xFF066B42)   // button pressed / texto verde sobre fondos claros
-    val GreenMid = Color(0xFF2FB67C)       // secondary progress bars
-    val GreenSoft = Color(0xFF6ED3A3)      // tertiary progress fill
-    val GreenPale = Color(0xFFB5EBD0)      // light fill / toast secondary text
-    val GreenTrack = Color(0xFFD6F2E4)     // unfilled progress track
+    val GreenPrimary = Color(0xFF778661)   // verde oliva: buttons, active chip, progress fill (3.9:1 con blanco: solo texto en negrita grande)
+    val GreenHover = Color(0xFF66754F)     // button hover (5.0:1 con blanco)
+    val GreenPressed = Color(0xFF56633F)   // button pressed / texto verde sobre fondos claros (5.9:1)
+    val GreenMid = Color(0xFF9CAA86)       // secondary progress bars
+    val GreenSoft = Color(0xFFA9B893)      // tertiary progress fill
+    val GreenPale = Color(0xFFC3CDB1)      // light fill / toast secondary text
+    val GreenTrack = Color(0xFFD4DCC2)     // unfilled progress track
 
     // ---- Accents (streaks, points, highlights) ----
-    val OrangeAccent = Color(0xFFC2410C)   // racha, enlaces (5.2:1 sobre blanco)
-    val OrangeAccentHover = Color(0xFF9A3412)
-    val GoldAccent = Color(0xFFFFB020)     // puntos, logros, destacados (usar con texto oscuro)
-    val SkyAccent = Color(0xFF1C6FC4)      // recordatorios / hora
-    val SkySoft = Color(0xFFE4F0FB)        // fondo suave para recordatorios
+    val OrangeAccent = Color(0xFFA55729)   // terracota: racha, enlaces, recordatorios (4.8:1)
+    val OrangeAccentHover = Color(0xFF7E3F1C)
+    val GoldAccent = Color(0xFFF1AA52)     // amarillo: puntos, logros (usar con texto oscuro, 5.5:1)
+    val SkyAccent = OrangeAccent           // recordatorios / hora: la paleta de marca no tiene azul
+    val SkySoft = Color(0xFFF6E7DC)        // fondo suave terracota para recordatorios
 
-    // ---- Neutral surfaces (claros y frescos, sin beige grisáceo) ----
-    val Background = Color(0xFFF6FBF8)     // screen background
-    val Surface = Color(0xFFFFFFFF)        // elevated cards
-    val SurfaceVariant = Color(0xFFE3F5EC) // icon-bubble / soft chip background
-    val SurfaceMuted = Color(0xFFEEF5F1)   // secondary chip / stat tile background
-    val SurfaceTint = Color(0xFFDDF3E7)    // selected / green-tinted surface
+    // ---- Neutral surfaces (marfil / papel) ----
+    val Background = Color(0xFFF9F4EE)     // screen background (marfil)
+    val Surface = Color(0xFFFFFCF8)        // elevated cards
+    val SurfaceVariant = Color(0xFFEFE6D6) // icon-bubble / soft chip background
+    val SurfaceMuted = Color(0xFFF4EFE4)   // secondary chip / stat tile background
+    val SurfaceTint = Color(0xFFEEF0E3)    // selected / green-tinted surface
 
     // ---- Borders ----
-    val BorderSubtle = Color(0xFFC9DDD3)
-    val BorderMuted = Color(0xFFDCE9E2)
+    val BorderSubtle = Color(0xFFDFD4C2)
+    val BorderMuted = Color(0xFFE3D9C8)
 
     // ---- Text ----
-    val TextPrimary = Color(0xFF14312A)    // headings, primary body text (13:1)
-    val TextSecondary = Color(0xFF3F5C54)  // supporting body text (7:1)
-    val TextMuted = Color(0xFF5A746C)      // captions, meta text (≥4.5:1 sobre fondo)
-    val TextFaint = Color(0xFF93A79F)      // disabled / decorative only
+    val TextPrimary = Color(0xFF2D403E)    // verde oscuro: headings, primary body text (10:1)
+    val TextSecondary = Color(0xFF5C6A5B)  // supporting body text (5.2:1)
+    val TextMuted = Color(0xFF66705F)      // captions, meta text (4.7:1; #8A9283 daba 3:1)
+    val TextFaint = Color(0xFFA9A493)      // disabled / decorative only
 
     // ---- Overlays & feedback surfaces ----
-    val ScrimBackdrop = Color(0xA314312A)  // modal backdrop
-    val ToastSurface = Color(0xFF14312A)   // dark toast/snackbar background
-    val SelectionTint = Color(0x470A8754)  // text selection
+    val ScrimBackdrop = Color(0xA32D403E)  // modal backdrop
+    val ToastSurface = Color(0xFF2D403E)   // dark toast/snackbar background
+    val SelectionTint = Color(0x47A55729)  // text selection
 
     // ---- Semantic status ----
     val Success = GreenPrimary
     val Warning = GoldAccent
-    val Error = Color(0xFFC62828)          // 5.6:1 sobre blanco
-    val Info = SkyAccent
+    val Error = Color(0xFFB3453A)          // 5.0:1 sobre marfil
+    val Info = OrangeAccent
 }
 
 /**
@@ -69,6 +67,8 @@ object VittaColors {
 object VittaColorRoles {
     val primary = VittaColors.GreenPrimary
     val onPrimary = VittaColors.Surface
+    /** Fondo relleno que lleva texto blanco normal (botones, píldoras): 5.0:1, el oliva base solo da 3.9:1. */
+    val primaryStrong = VittaColors.GreenHover
     val primaryHover = VittaColors.GreenHover
     val primaryPressed = VittaColors.GreenPressed
 

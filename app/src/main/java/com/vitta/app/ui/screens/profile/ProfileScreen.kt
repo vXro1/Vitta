@@ -10,6 +10,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
+import androidx.compose.material.icons.outlined.EmojiEvents
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.AlertDialog
@@ -40,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.vitta.app.data.remote.dto.UserPointsDto
 import com.vitta.app.ui.components.common.VittaIconAssets
 import com.vitta.app.ui.components.mascot.MascotSize
 import com.vitta.app.ui.components.mascot.MascotState
@@ -56,12 +58,10 @@ private val Pill = RoundedCornerShape(percent = 50)
 private val MaxWidth = 640.dp
 
 /**
- * Sección "Yo", maquetada según las pantallas Perfil y Logros del
- * mockup (`vitta-app-maquetado--main`), con sus colores, Caprasimo/Figtree,
- * tamaños y espaciados (ver [Mk]). El progreso vive en su propia pestaña.
- *
- * - Logros: datos reales de `GET /api/logros` vía [ProfileViewModel].
- * - Nombre, correo, hábitos activos y mejor racha: los entrega la app como antes.
+ * Pestaña Perfil, maquetada según el mockup (`vitta-app-maquetado--main`).
+ * Nombre, correo, hábitos activos, medallas y VitaPuntos salen de
+ * `GET /api/users/me`; la mejor racha la calcula Inicio. Las medallas
+ * completas están en la pestaña Logros ([AchievementsScreen]).
  */
 @Composable
 fun ProfileScreen(
@@ -70,9 +70,13 @@ fun ProfileScreen(
     activeHabits: Int,
     bestStreak: Int,
     onLogout: () -> Unit,
+    onOpenAchievements: () -> Unit,
     viewModel: ProfileViewModel = viewModel()
 ) {
     val state by viewModel.uiState.collectAsState()
+    val perfil = state.perfil
+    val nombre = perfil?.nombre ?: userName
+    val correo = perfil?.correo ?: userEmail
     var confirmLogout by rememberSaveable { mutableStateOf(false) }
     val uriHandler = LocalUriHandler.current
     val context = LocalContext.current
@@ -80,7 +84,10 @@ fun ProfileScreen(
         runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull() ?: "—"
     }
 
-    LaunchedEffect(Unit) { viewModel.cargarLogros() }
+    LaunchedEffect(Unit) {
+        viewModel.cargarPerfil()
+        viewModel.cargarLogros()
+    }
 
     Box(Modifier.fillMaxSize().background(Mk.Screen), contentAlignment = Alignment.TopCenter) {
         // padding:16px 20px 24px
@@ -106,16 +113,16 @@ fun ProfileScreen(
                 Spacer(Modifier.width(16.dp))
                 Column(Modifier.weight(1f)) {
                     Text(
-                        userName.ifBlank { "Usuario de Vitta" },
+                        nombre.ifBlank { "Usuario de Vitta" },
                         style = caprasimo(23f, 1.1f, -0.02f),
                         color = Mk.Ink,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.semantics { heading() }
                     )
-                    if (!userEmail.isNullOrBlank()) {
+                    if (!correo.isNullOrBlank()) {
                         Text(
-                            userEmail,
+                            correo,
                             style = figtree(500, 13f),
                             color = Mk.Muted,
                             maxLines = 1,
@@ -131,17 +138,22 @@ fun ProfileScreen(
                 Modifier.padding(top = 20.dp).fillMaxWidth().height(IntrinsicSize.Min),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                StatTile("$activeHabits", "Hábitos\nactivos", Mk.OliveTile, Mk.OliveDeep, Mk.OliveText, Modifier.weight(1f))
                 StatTile(
-                    if (state.cargandoLogros && state.logros.isEmpty()) "—" else "${state.obtenidos}",
+                    "${perfil?.habitos_activos ?: activeHabits}",
+                    "Hábitos\nactivos", Mk.OliveTile, Mk.OliveDeep, Mk.OliveText, Modifier.weight(1f)
+                )
+                StatTile(
+                    perfil?.logros_obtenidos?.toString()
+                        ?: if (state.cargandoLogros && state.logros.isEmpty()) "—" else "${state.obtenidos}",
                     "Medallas\nobtenidas", Mk.AmberTile, Mk.AmberDeep, Mk.AmberText, Modifier.weight(1f)
                 )
                 StatTile("$bestStreak", "Mejor\nracha", Mk.Sand, Mk.Ink, Mk.SandText, Modifier.weight(1f))
             }
 
-            // ---- Logros (API real) ----
-            SectionTitle("Logros")
-            LogrosSection(state, onRetry = viewModel::cargarLogros)
+            perfil?.puntos?.let { puntos ->
+                SectionTitle("Tu nivel")
+                LevelCard(puntos)
+            }
 
             // ---- Lista tipo menú del mockup ----
             Column(
@@ -152,7 +164,15 @@ fun ProfileScreen(
                     .clip(R28)
                     .background(Mk.Paper)
             ) {
-                MenuRow(Icons.Outlined.Person, "Cuenta", trailing = userEmail?.ifBlank { null } ?: "—")
+                MenuRow(
+                    Icons.Outlined.EmojiEvents,
+                    "Mis logros",
+                    trailing = if (state.logros.isEmpty()) "Ver" else "${state.obtenidos} de ${state.logros.size}",
+                    onClickLabel = "Abrir logros",
+                    onClick = onOpenAchievements
+                )
+                MenuDivider()
+                MenuRow(Icons.Outlined.Person, "Cuenta", trailing = correo?.ifBlank { null } ?: "—")
                 MenuDivider()
                 MenuRow(Icons.Outlined.Info, "Versión", trailing = version)
                 MenuDivider()
@@ -203,9 +223,59 @@ fun ProfileScreen(
     }
 }
 
+/** VitaPuntos y nivel reales (spec v2.0 §6.3–6.4), en la tarjeta oscura del mockup. */
+@Composable
+private fun LevelCard(puntos: UserPointsDto) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .background(Mk.Night, R28)
+            .padding(20.dp)
+            .semantics(mergeDescendants = true) {}
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("NIVEL ${puntos.nivel}", style = figtree(600, 11f, 1f, 0.09f), color = Mk.Amber)
+                Text(
+                    puntos.nombre_nivel,
+                    style = caprasimo(22f, 1.15f),
+                    color = Mk.NightText,
+                    modifier = Modifier.padding(top = 6.dp)
+                )
+            }
+            Column(horizontalAlignment = Alignment.End) {
+                Text("${puntos.puntos_totales}", style = caprasimo(26f, 1f), color = Mk.NightText)
+                Text("VitaPuntos", style = figtree(600, 12f), color = Mk.NightSub)
+            }
+        }
+        Box(
+            Modifier
+                .padding(top = 16.dp)
+                .fillMaxWidth()
+                .height(8.dp)
+                .clip(Pill)
+                .background(Mk.NightTrack)
+        ) {
+            Box(
+                Modifier
+                    .fillMaxHeight()
+                    .fillMaxWidth(puntos.progresoNivel.coerceIn(0f, 1f))
+                    .background(Mk.Amber, Pill)
+            )
+        }
+        Text(
+            puntos.puntos_para_siguiente?.let { "Te faltan $it VitaPuntos para el siguiente nivel. Cada hábito cumplido suma 10." }
+                ?: "Llegaste al nivel máximo. ¡Eres un ejemplo de constancia!",
+            style = figtree(500, 12.5f, 1.4f),
+            color = Mk.NightSub,
+            modifier = Modifier.padding(top = 10.dp)
+        )
+    }
+}
+
 /** h3: Caprasimo 17px, letter-spacing -.015em, margin 26px 2px 12px. */
 @Composable
-private fun SectionTitle(text: String) {
+internal fun SectionTitle(text: String) {
     Text(
         text,
         style = caprasimo(17f, 1.2f, -0.015f),
@@ -230,7 +300,7 @@ private fun StatTile(value: String, label: String, bg: Color, valueColor: Color,
 }
 
 @Composable
-private fun LogrosSection(state: ProfileUiState, onRetry: () -> Unit) {
+internal fun LogrosSection(state: ProfileUiState, onRetry: () -> Unit) {
     when {
         state.cargandoLogros && state.logros.isEmpty() -> Box(
             Modifier.fillMaxWidth().padding(vertical = 24.dp),
