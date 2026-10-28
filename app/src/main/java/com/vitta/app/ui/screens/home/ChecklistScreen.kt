@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
@@ -27,7 +28,15 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.vitta.app.R
+import com.vitta.app.data.remote.dto.LogroDto
 import com.vitta.app.ui.components.auth.VittaAuthErrorBanner
+import com.vitta.app.ui.components.feedback.VittaRewardSheet
+import com.vitta.app.ui.components.feedback.VittaStreakDialog
+import com.vitta.app.ui.components.progress.VittaInsigniaBadge
+import com.vitta.app.ui.screens.profile.insigniaPara
+import com.vitta.app.ui.theme.Mk
+import com.vitta.app.ui.theme.caprasimo
+import com.vitta.app.ui.theme.figtree
 import com.vitta.app.ui.components.brand.VittaLogo
 import com.vitta.app.ui.components.buttons.VittaPrimaryButton
 import com.vitta.app.ui.components.common.VittaAssetImage
@@ -61,25 +70,23 @@ fun ChecklistScreen(
     userName: String,
     viewModel: ChecklistViewModel,
     onAddHabit: () -> Unit,
-    onEditHabit: (Int) -> Unit
+    onEditHabit: (Int) -> Unit,
+    onVerLogros: () -> Unit = {}
 ) {
     val state by viewModel.uiState.collectAsState()
 
     if (state.isLoading) {
-        Box(Modifier.fillMaxSize().background(VittaColorRoles.background), contentAlignment = Alignment.Center) {
+        Box(Modifier.fillMaxSize().background(Mk.Screen), contentAlignment = Alignment.Center) {
             CircularProgressIndicator(color = VittaColorRoles.primary)
         }
         return
     }
 
-    // TODO: conectar con el backend cuando existan puntos y nivel.
-    val level = 5
-    val points = 1240
-    val levelName = "Impulsor"
-    val pointsToNext = 760
-    val levelProgress = 0.3f
+    // VitaPuntos y nivel reales (GET /api/dashboard).
+    val puntos = state.puntos
 
-    Box(Modifier.fillMaxSize().background(VittaColorRoles.background), contentAlignment = Alignment.TopCenter) {
+    // Mismo fondo que Progreso, Logros y Yo (#F9F4EE del mockup).
+    Box(Modifier.fillMaxSize().background(Mk.Screen), contentAlignment = Alignment.TopCenter) {
         LazyColumn(
             modifier = Modifier
                 .widthIn(max = DashboardMaxWidth)
@@ -87,7 +94,7 @@ fun ChecklistScreen(
             contentPadding = PaddingValues(VittaSpacing.Lg),
             verticalArrangement = Arrangement.spacedBy(VittaSpacing.Md)
         ) {
-            item { HeaderBlock(userName = userName, level = level) }
+            item { HeaderBlock(userName = userName, level = puntos?.nivel) }
 
             state.errorMessage?.let { message ->
                 item {
@@ -102,16 +109,20 @@ fun ChecklistScreen(
                 return@LazyColumn
             }
 
-            if (state.cards.isNotEmpty()) {
+            val rachaPerdida = state.rachaPerdida
+            if (rachaPerdida != null) {
+                // Mockup: el aviso "Racha terminada" ocupa el lugar de la tarjeta principal.
+                item { RachaTerminadaCard(rachaPerdida, onEmpezar = viewModel::dismissRachaPerdida) }
+            } else if (state.cards.isNotEmpty()) {
                 item {
                     HeroCard(
                         doneCount = state.doneToday,
                         totalCount = state.todayCards.size,
                         racha = state.bestCurrentStreak,
-                        points = points,
-                        levelName = levelName,
-                        pointsToNext = pointsToNext,
-                        levelProgress = levelProgress
+                        points = puntos?.puntos_totales,
+                        levelName = puntos?.nombre_nivel,
+                        pointsToNext = puntos?.puntos_para_siguiente,
+                        levelProgress = puntos?.progresoNivel ?: 0f
                     )
                 }
             }
@@ -179,11 +190,179 @@ fun ChecklistScreen(
 
             item { Spacer(Modifier.height(VittaSpacing.Xl)) }
         }
+
+        RachaSumadaDialog(state.rachaSumada, onDismiss = viewModel::dismissRachaSumada)
+
+        // Medalla recién desbloqueada (último hijo del Box: el scrim solo cubre esta pantalla).
+        LogroDesbloqueadoSheet(
+            logro = state.logroCelebrado,
+            onDismiss = viewModel::dismissCelebration,
+            onVerLogros = {
+                viewModel.dismissCelebration()
+                onVerLogros()
+            }
+        )
+    }
+}
+
+/**
+ * Modal "¡Felicitaciones!" al sumar un nuevo día de racha ([VittaStreakDialog]),
+ * con la mascota de Vitta y la racha real del usuario. Va como hijo del Box
+ * de la pantalla para que el scrim solo cubra esa pantalla.
+ */
+@Composable
+internal fun RachaSumadaDialog(aviso: RachaSumadaUi?, onDismiss: () -> Unit) {
+    // Conserva el último valor mientras dura la animación de salida.
+    var last by remember { mutableStateOf<RachaSumadaUi?>(null) }
+    LaunchedEffect(aviso) { if (aviso != null) last = aviso }
+    val current = aviso ?: last ?: return
+    VittaStreakDialog(
+        visible = aviso != null,
+        days = current.dias,
+        onDismiss = onDismiss,
+        mascot = { VittaMascot(state = MascotState.Strong, size = MascotSize.Medium) }
+    )
+}
+
+/**
+ * Celebración de una medalla nueva ("Logro desbloqueado" del mockup), con el
+ * [VittaRewardSheet] existente, la insignia SVG del logro y su bono real.
+ */
+@Composable
+internal fun LogroDesbloqueadoSheet(logro: LogroDto?, onDismiss: () -> Unit, onVerLogros: () -> Unit) {
+    // Conserva el último logro mientras dura la animación de salida.
+    var last by remember { mutableStateOf<LogroDto?>(null) }
+    LaunchedEffect(logro) { if (logro != null) last = logro }
+    val current = logro ?: last ?: return
+
+    VittaRewardSheet(
+        visible = logro != null,
+        area = "LOGRO DESBLOQUEADO",
+        title = current.nombre,
+        description = current.descripcion.ifBlank { current.condicion },
+        onDismiss = onDismiss,
+        mascot = {
+            VittaInsigniaBadge(
+                insignia = insigniaPara(current.icono.orEmpty()),
+                unlocked = true,
+                size = 96.dp
+            )
+        }
+    ) {
+        if (current.puntos_bonus > 0) {
+            Row(
+                Modifier
+                    .background(Mk.AmberTile, VittaShapes.pill)
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("+${current.puntos_bonus}", style = caprasimo(15f, 1.2f), color = Mk.AmberInk)
+                Spacer(Modifier.width(7.dp))
+                Text("VitaPuntos", style = figtree(600, 13f), color = Mk.AmberDeep)
+            }
+        }
+        Spacer(Modifier.height(VittaSpacing.Sm))
+        VittaPrimaryButton(text = "Ver mis logros", onClick = onVerLogros, modifier = Modifier.fillMaxWidth())
+    }
+}
+
+/**
+ * "Racha terminada" del mockup (`perdida`): fondo #EFE6D6, radio 30, Vitta de
+ * la tarde, récord histórico y "Empezar una racha nueva hoy". Datos reales:
+ * la racha cortada, el día en que cerró y el récord salen del backend.
+ */
+@Composable
+private fun RachaTerminadaCard(racha: RachaPerdidaUi, onEmpezar: () -> Unit) {
+    val ayer = LocalDate.now(java.time.ZoneId.systemDefault()).minusDays(1)
+    val cuando = if (racha.cerroEl == ayer) "ayer"
+    else "el " + racha.cerroEl.format(DateTimeFormatter.ofPattern("d 'de' MMMM", Locale("es", "ES")))
+    val dias = if (racha.dias == 1) "1 día" else "${racha.dias} días"
+    val gris = remember {
+        androidx.compose.ui.graphics.ColorFilter.colorMatrix(
+            androidx.compose.ui.graphics.ColorMatrix().apply { setToSaturation(0.25f) }
+        )
+    }
+
+    Column(
+        Modifier
+            .padding(top = 4.dp)
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(30.dp))
+            .background(Mk.Sand)
+            .padding(20.dp)
+    ) {
+        Row(verticalAlignment = Alignment.Bottom) {
+            Column(Modifier.weight(1f).padding(bottom = 4.dp)) {
+                Text("RACHA TERMINADA", style = figtree(600, 11f, 1f, 0.09f), color = Mk.SandText)
+                Text(
+                    "Tu racha de $dias cerró $cuando",
+                    style = caprasimo(22f, 1.15f, -0.015f),
+                    color = Mk.Ink,
+                    modifier = Modifier.padding(top = 9.dp).semantics { heading() }
+                )
+                Text(
+                    "Tus logros y tus VitaPuntos siguen intactos. Hoy puedes empezar una nueva.",
+                    style = figtree(500, 13.5f, 1.45f),
+                    color = Mk.Body,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+            }
+            Spacer(Modifier.width(10.dp))
+            // <img vitta width:98px;margin:0 -2px -12px 0> (misma ilustración que "Dormir · esta noche").
+            VittaMascot(
+                state = MascotState.Evening,
+                size = MascotSize.Medium,
+                modifier = Modifier.offset(x = 2.dp, y = 12.dp)
+            )
+        }
+
+        Row(
+            Modifier
+                .padding(top = 14.dp)
+                .fillMaxWidth()
+                .background(Mk.Screen, RoundedCornerShape(20.dp))
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            coil.compose.AsyncImage(
+                model = coil.request.ImageRequest.Builder(androidx.compose.ui.platform.LocalContext.current)
+                    .data("file:///android_asset/" + VittaIconAssets.streakFlame)
+                    .build(),
+                contentDescription = null,
+                modifier = Modifier.size(28.dp),
+                alpha = 0.45f,
+                colorFilter = gris
+            )
+            Spacer(Modifier.width(10.dp))
+            Column(Modifier.weight(1f)) {
+                Text("Tu récord histórico", style = figtree(600, 13f), color = Mk.Body)
+                Text(
+                    "${racha.record} ${if (racha.record == 1) "día seguido" else "días seguidos"}" +
+                        (racha.recordMes?.let { ", en $it" } ?: ""),
+                    style = figtree(500, 12.5f),
+                    color = Mk.Muted,
+                    modifier = Modifier.padding(top = 2.dp)
+                )
+            }
+        }
+
+        Box(
+            Modifier
+                .padding(top = 12.dp)
+                .fillMaxWidth()
+                .heightIn(min = 54.dp)
+                .clip(VittaShapes.pill)
+                .background(Mk.Olive)
+                .clickable(role = androidx.compose.ui.semantics.Role.Button, onClick = onEmpezar),
+            contentAlignment = Alignment.Center
+        ) {
+            Text("Empezar una racha nueva hoy", style = caprasimo(16f, 1.2f), color = Mk.NightText)
+        }
     }
 }
 
 @Composable
-private fun HeaderBlock(userName: String, level: Int) {
+private fun HeaderBlock(userName: String, level: Int?) {
     val today = remember {
         val locale = Locale("es", "ES")
         val date = LocalDate.now()
@@ -209,15 +388,17 @@ private fun HeaderBlock(userName: String, level: Int) {
                 modifier = Modifier.semantics { heading() }
             )
         }
-        LevelPill(level = level)
+        // El nivel llega del backend; mientras no hay respuesta no se muestra ninguno inventado.
+        if (level != null) LevelPill(level = level)
     }
 }
 
+/** Píldora "Nivel N" del mockup: fondo #2D403E con punto ámbar. */
 @Composable
 private fun LevelPill(level: Int) {
     Row(
         modifier = Modifier
-            .background(VittaColorRoles.primary, VittaShapes.pill)
+            .background(Mk.Night, VittaShapes.pill)
             .padding(horizontal = VittaSpacing.Md, vertical = VittaSpacing.Sm),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -232,9 +413,9 @@ private fun HeroCard(
     doneCount: Int,
     totalCount: Int,
     racha: Int,
-    points: Int,
-    levelName: String,
-    pointsToNext: Int,
+    points: Int?,
+    levelName: String?,
+    pointsToNext: Int?,
     levelProgress: Float
 ) {
     val sinHabitosHoy = totalCount == 0
@@ -312,14 +493,16 @@ private fun HeroCard(
                 )
                 HeroStat(
                     icon = { StatIcon(R.drawable.ic8_trophy) },
-                    value = formatPoints(points),
+                    value = points?.let(::formatPoints) ?: "—",
                     label = "VitaPuntos",
                     modifier = Modifier.weight(1f)
                 )
             }
 
-            Spacer(Modifier.height(VittaSpacing.Md))
-            LevelProgress(levelName = levelName, pointsToNext = pointsToNext, progress = levelProgress)
+            if (levelName != null) {
+                Spacer(Modifier.height(VittaSpacing.Md))
+                LevelProgress(levelName = levelName, pointsToNext = pointsToNext, progress = levelProgress)
+            }
         }
     }
 }
@@ -353,12 +536,12 @@ private fun StreakFlame(size: androidx.compose.ui.unit.Dp) {
 }
 
 @Composable
-private fun LevelProgress(levelName: String, pointsToNext: Int, progress: Float) {
+private fun LevelProgress(levelName: String, pointsToNext: Int?, progress: Float) {
     Column {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text(levelName, style = VittaTextStyles.body, color = VittaColorRoles.textSecondary)
             Text(
-                "$pointsToNext para el siguiente nivel",
+                if (pointsToNext == null) "Nivel máximo" else "${formatPoints(pointsToNext)} para el siguiente nivel",
                 style = VittaTextStyles.bodySmall,
                 color = VittaColorRoles.textMuted
             )
@@ -592,7 +775,7 @@ private fun OutlinedPill(text: String, onClick: () -> Unit) {
 }
 
 /** 1240 -> "1.240" (separador de miles con punto, como en el prototipo). */
-private fun formatPoints(points: Int): String {
+internal fun formatPoints(points: Int): String {
     val symbols = DecimalFormatSymbols(Locale("es", "ES")).apply { groupingSeparator = '.' }
     return DecimalFormat("#,###", symbols).format(points)
 }

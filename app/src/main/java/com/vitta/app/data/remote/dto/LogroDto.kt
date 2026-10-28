@@ -13,5 +13,8 @@ data class LogroDto(
     val condicion: String,
     val puntos_bonus: Int,
     val obtenido: Boolean,
-    val obtenido_en: String?
+    val obtenido_en: String?,
+    /** Avance real del usuario (limitado a [progreso_meta]); null si el logro no tiene condición evaluable. */
+    val progreso_actual: Int? = null,
+    val progreso_meta: Int? = null
 )

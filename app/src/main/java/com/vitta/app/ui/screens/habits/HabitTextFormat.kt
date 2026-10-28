@@ -37,6 +37,16 @@ object HabitTextFormat {
         return !especificos || todayCode in days
     }
 
+    /** Hora del recordatorio en el formato del backend (`HH:MM`, 24 h). */
+    fun hora(time: java.time.LocalTime): String = String.format(java.util.Locale.ROOT, "%02d:%02d", time.hour, time.minute)
+
+    /** "07:30" → 07:30; null si el texto no es una hora válida. */
+    fun parseHora(hora: String?): java.time.LocalTime? =
+        hora?.let { runCatching { java.time.LocalTime.parse(it.take(5)) }.getOrNull() }
+
+    /** El backend acepta hasta 30 caracteres en `unidad`; vacía → null. */
+    fun unidadParaBackend(unidad: String): String? = unidad.trim().take(30).ifBlank { null }
+
     fun stepFor(unidad: String): Int = when {
         unidad.contains("paso", ignoreCase = true) -> 500
         else -> 1

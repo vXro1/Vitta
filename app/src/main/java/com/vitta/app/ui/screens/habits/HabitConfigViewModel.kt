@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.vitta.app.data.mock.PredefinedHabit
 import com.vitta.app.data.repository.CreateHabitResult
 import com.vitta.app.data.repository.HabitRepository
+import com.vitta.app.data.repository.UserRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -34,7 +35,8 @@ data class HabitConfigUiState(
 
 class HabitConfigViewModel(
     habits: List<PredefinedHabit>,
-    private val repository: HabitRepository = HabitRepository()
+    private val repository: HabitRepository = HabitRepository(),
+    private val userRepository: UserRepository = UserRepository()
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(initialStateFor(habits, 0))
@@ -87,16 +89,21 @@ class HabitConfigViewModel(
             return
         }
 
-        // La hora del recordatorio no se envía: el backend no tiene ese campo.
         _uiState.value = state.copy(isLoading = true, errorMessage = null)
         viewModelScope.launch {
             when (val result = repository.createHabit(
                 nombre = habit.nombre,
                 meta = HabitTextFormat.buildMeta(state.metaValor, state.metaUnidad),
                 frecuencia = HabitTextFormat.buildFrecuencia(state.diasEspecificos, state.selectedDays),
-                tipo = habit.tipo
+                tipo = habit.tipo,
+                metaValor = state.metaValor.toDouble(),
+                unidad = HabitTextFormat.unidadParaBackend(state.metaUnidad),
+                icono = habit.icon.id,
+                categoria = habit.categoria
             )) {
                 is CreateHabitResult.Success -> {
+                    // La hora se guarda como recordatorio del hábito (`POST /api/recordatorios`).
+                    userRepository.saveReminder(result.habit.id, HabitTextFormat.hora(state.reminderTime))
                     if (state.isLastHabit) {
                         _uiState.value = state.copy(isLoading = false, finished = true)
                         onAllSaved()

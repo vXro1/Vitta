@@ -74,15 +74,6 @@ fun CustomHabitScreen(
             supportingText = "Te sugerimos uno según el nombre. Toca “Más” para ver todo el catálogo."
         ) {
             HabitIconPicker(selected = state.icon, onSelect = viewModel::onIconSelect)
-            // El servidor no guarda el icono: al recargar se deduce del nombre.
-            val shownLater = HabitIcons.forHabitName(state.nombre) ?: HabitIcons.Default
-            if (state.nombre.isNotBlank() && shownLater.id != state.icon.id) {
-                Spacer(Modifier.height(VittaSpacing.Sm))
-                HabitInfoNote(
-                    "El servidor aún no guarda el icono elegido. En tu inicio este hábito " +
-                        "se verá con el icono “${shownLater.label}”, que es el que coincide con su nombre."
-                )
-            }
         }
 
         HabitFormSection(title = "Meta", step = 3, supportingText = "¿Cuánto quieres lograr cada vez?") {
@@ -118,9 +109,9 @@ fun CustomHabitScreen(
     }
 }
 
-/** Aviso honesto: el backend todavía no guarda icono ni hora (ver informe). */
+/** La hora se guarda como recordatorio del hábito (`/api/recordatorios`) y ordena la pestaña «Hoy». */
 internal const val ReminderNotSavedNote =
-    "Por ahora la hora no se guarda en tu cuenta ni genera notificaciones: el servidor aún no tiene dónde almacenarla."
+    "La hora se guarda en tu cuenta y ubica el hábito en la mañana, la tarde o la noche de tu pestaña «Hoy»."
 
 /**
  * Esqueleto común de los formularios de hábito: cabecera con regreso,

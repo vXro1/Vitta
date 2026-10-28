@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.vitta.app.data.repository.CreateHabitResult
 import com.vitta.app.data.repository.HabitRepository
+import com.vitta.app.data.repository.UserRepository
 import com.vitta.app.ui.components.icons.HabitIcon
 import com.vitta.app.ui.components.icons.HabitIcons
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -32,7 +33,8 @@ data class CustomHabitUiState(
 )
 
 class CustomHabitViewModel(
-    private val repository: HabitRepository = HabitRepository()
+    private val repository: HabitRepository = HabitRepository(),
+    private val userRepository: UserRepository = UserRepository()
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CustomHabitUiState())
@@ -92,17 +94,22 @@ class CustomHabitViewModel(
             return
         }
 
-        // Nota: el icono y la hora del recordatorio NO se envían: el backend
-        // no tiene columnas para ellos (ver informe / README_RECURSOS.md).
+        // Se guardan la meta numérica, el icono y su área (para avance parcial y
+        // logros) y la hora como recordatorio del hábito.
         _uiState.value = state.copy(isLoading = true, errorMessage = null)
         viewModelScope.launch {
             when (val result = repository.createHabit(
                 nombre = state.nombre.trim(),
                 meta = HabitTextFormat.buildMeta(state.metaValor, state.metaUnidad),
                 frecuencia = HabitTextFormat.buildFrecuencia(state.diasEspecificos, state.selectedDays),
-                tipo = "personalizado"
+                tipo = "personalizado",
+                metaValor = state.metaValor.toDouble(),
+                unidad = HabitTextFormat.unidadParaBackend(state.metaUnidad),
+                icono = state.icon.id,
+                categoria = state.icon.category.label
             )) {
                 is CreateHabitResult.Success -> {
+                    userRepository.saveReminder(result.habit.id, HabitTextFormat.hora(state.reminderTime))
                     _uiState.value = _uiState.value.copy(isLoading = false)
                     onSaved()
                 }

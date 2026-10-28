@@ -4,6 +4,8 @@ import android.app.Application
 import coil.ImageLoader
 import coil.ImageLoaderFactory
 import coil.decode.SvgDecoder
+import com.vitta.app.data.local.LogroCelebrationStore
+import com.vitta.app.data.local.StreakNoticeStore
 import com.vitta.app.data.remote.ApiClient
 
 /**
@@ -14,6 +16,8 @@ class VittaApplication : Application(), ImageLoaderFactory {
     override fun onCreate() {
         super.onCreate()
         ApiClient.init(this)
+        LogroCelebrationStore.init(this)
+        StreakNoticeStore.init(this)
     }
     override fun newImageLoader(): ImageLoader =
         ImageLoader.Builder(this)

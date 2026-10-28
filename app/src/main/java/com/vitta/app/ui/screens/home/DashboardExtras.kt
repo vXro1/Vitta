@@ -4,6 +4,13 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material3.Icon
+import com.vitta.app.ui.theme.Mk
+import com.vitta.app.ui.theme.caprasimo
+import com.vitta.app.ui.theme.figtree
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -107,31 +114,44 @@ fun ChallengeCard(challenge: ChallengeUi, modifier: Modifier = Modifier) {
     }
 }
 
+/**
+ * Banner "Vitta Store" del mockup: fondo #2D403E, radio 28, padding 20,
+ * Vitta lector (sin fondo), etiqueta ámbar, título Caprasimo 18 y flecha oliva.
+ */
 @Composable
 fun StoreBanner(onClick: () -> Unit, modifier: Modifier = Modifier) {
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clip(VittaShapes.large)
-            .background(VittaColorRoles.primary)
+            .clip(RoundedCornerShape(28.dp))
+            .background(Mk.Night)
             .clickable { onClick() }
-            .padding(VittaSpacing.Lg),
+            .padding(20.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        VittaMascot(state = MascotState.Reader, size = MascotSize.Medium)
-        Spacer(Modifier.width(VittaSpacing.Md))
+        VittaMascot(state = MascotState.Reader, size = MascotSize.Small)
+        Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
-            Text("VITTA STORE", style = VittaTextStyles.label, color = VittaColors.OrangeAccent)
-            Spacer(Modifier.height(VittaSpacing.Xs))
-            Text("Tres recompensas a tu alcance", style = VittaTextStyles.heading, color = Color.White)
-            Spacer(Modifier.height(VittaSpacing.Xs))
+            Text("VITTA STORE", style = figtree(600, 11f, 1f, 0.09f), color = Mk.Amber)
+            Text(
+                "Tres recompensas a tu alcance",
+                style = caprasimo(18f, 1.15f),
+                color = Mk.NightText,
+                modifier = Modifier.padding(top = 7.dp)
+            )
             Text(
                 "Rutinas, recetas y retos para los hábitos que ya tienes.",
-                style = VittaTextStyles.body,
-                color = Color.White.copy(alpha = 0.8f)
+                style = figtree(500, 12.5f, 1.4f),
+                color = Mk.NightSub,
+                modifier = Modifier.padding(top = 4.dp)
             )
         }
-        Text("›", style = VittaTextStyles.heading, color = Color.White.copy(alpha = 0.7f))
+        Icon(
+            Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            contentDescription = null,
+            tint = Mk.Olive,
+            modifier = Modifier.size(22.dp)
+        )
     }
 }
 

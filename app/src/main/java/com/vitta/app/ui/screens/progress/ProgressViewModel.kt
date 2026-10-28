@@ -17,7 +17,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.LocalDate
-import java.time.ZoneOffset
+import java.time.ZoneId
 
 data class ProgressUiState(
     val period: ProgressPeriod = ProgressPeriod.Week,
@@ -32,7 +32,8 @@ data class ProgressUiState(
  */
 class ProgressViewModel(
     private val source: ProgressSource = ProgressSources.default(),
-    private val today: () -> LocalDate = { LocalDate.now(ZoneOffset.UTC) }
+    // Día local: el backend asigna cada registro al día de la zona que envía la app (X-Timezone).
+    private val today: () -> LocalDate = { LocalDate.now(ZoneId.systemDefault()) }
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ProgressUiState())

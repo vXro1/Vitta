@@ -28,11 +28,40 @@ object ApiClient {
         val token = runBlocking {
             TokenManager(appContext).tokenFlow.first()
         }
-        val request = chain.request().newBuilder().apply {
+        val base = chain.request().newBuilder().apply {
             if (token != null) addHeader("Authorization", "Bearer $token")
         }.build()
-        chain.proceed(request)
+
+        // El backend calcula el "día" de cada registro en la zona de `X-Timezone`
+        // (por defecto America/Bogota) y solo acepta nombres IANA canónicos.
+        val zone = if (timeZoneRejected) null else deviceTimeZone()
+        if (zone == null) return@Interceptor chain.proceed(base)
+
+        val response = chain.proceed(base.newBuilder().header("X-Timezone", zone).build())
+        if (response.code == 400 && response.peekBody(1024).string().contains("X-Timezone")) {
+            // El servidor no reconoce la zona del dispositivo (p. ej. un alias como "GMT"):
+            // se deja de enviar y se repite la petición con la zona por defecto del backend.
+            timeZoneRejected = true
+            response.close()
+            return@Interceptor chain.proceed(base)
+        }
+        response
     }
+
+    @Volatile
+    private var timeZoneRejected = false
+
+    /** Zona IANA del dispositivo; las variantes de UTC/GMT se envían como "UTC". */
+    private fun deviceTimeZone(): String? {
+        val id = runCatching { java.time.ZoneId.systemDefault().normalized().id }.getOrNull() ?: return null
+        return when {
+            id == "Z" || id.startsWith("GMT") || id.startsWith("UTC") || id.startsWith("Etc/") ||
+                id.startsWith("+") || id.startsWith("-") -> if (id in UtcAliases) "UTC" else null
+            else -> id
+        }
+    }
+
+    private val UtcAliases = setOf("Z", "GMT", "UTC", "Etc/UTC", "Etc/GMT", "Etc/UCT", "Etc/Universal", "Etc/Zulu", "GMT0", "Etc/GMT0", "Etc/GMT+0", "Etc/GMT-0")
 
     private val okHttpClient = OkHttpClient.Builder()
         .addInterceptor(loggingInterceptor)
@@ -48,4 +77,6 @@ object ApiClient {
     val authApi: AuthApi = retrofit.create(AuthApi::class.java)
     val habitApi: HabitApi = retrofit.create(HabitApi::class.java)
     val logroApi: LogroApi = retrofit.create(LogroApi::class.java)
+    val progressApi: ProgressApi = retrofit.create(ProgressApi::class.java)
+    val userApi: UserApi = retrofit.create(UserApi::class.java)
 }

@@ -13,12 +13,13 @@ import kotlinx.coroutines.coroutineScope
 import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
-import java.time.ZoneOffset
+import java.time.ZoneId
 
 /**
  * Historial REAL, armado con los endpoints que el frontend ya usa:
  * `GET /api/habits`, `GET /api/habits/:id/records` y `GET /api/habits/:id/streak`.
- * Los días se toman en UTC, igual que el backend (un registro por hábito y día UTC).
+ * Los días son locales del usuario, igual que el backend (un registro por hábito y día,
+ * según la zona que envía [com.vitta.app.data.remote.ApiClient] en `X-Timezone`).
  *
  * Se activa en [ProgressSources]; no requiere cambios en la pantalla.
  */
@@ -43,7 +44,10 @@ class HabitRecordsProgressSource(
             is RecordsResult.Success -> r.records
             is RecordsResult.Error -> return null
         }
-        val completed = records.filter { it.cumplido }.mapNotNull { utcDay(it.fecha) }.toSet()
+        // `dia` es el día local que asigna el backend (X-Timezone); si no viene, se deriva de `fecha`.
+        val completed = records.filter { it.cumplido }
+            .mapNotNull { r -> r.dia?.let { runCatching { LocalDate.parse(it) }.getOrNull() } ?: localDay(r.fecha) }
+            .toSet()
         val streakMax = (repository.getStreak(habit.id) as? StreakResult.Success)?.streak?.racha_maxima ?: 0
         return HabitHistory(
             id = habit.id,
@@ -53,12 +57,12 @@ class HabitRecordsProgressSource(
             }.toSet(),
             completedDays = completed,
             bestStreak = maxOf(streakMax, ProgressCalculator.longestRun(completed)),
-            startDate = utcDay(habit.creado_en)
+            startDate = localDay(habit.creado_en)
         )
     }
 
-    private fun utcDay(iso: String): LocalDate? =
-        runCatching { Instant.parse(iso).atZone(ZoneOffset.UTC).toLocalDate() }
+    private fun localDay(iso: String): LocalDate? =
+        runCatching { Instant.parse(iso).atZone(ZoneId.systemDefault()).toLocalDate() }
             .recoverCatching { LocalDate.parse(iso.take(10)) }
             .getOrNull()
 }
