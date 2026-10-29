@@ -28,6 +28,7 @@ import com.vitta.app.ui.screens.habits.HabitSelectionScreen
 import com.vitta.app.ui.screens.home.FirstHabitTeaserScreen
 import com.vitta.app.ui.screens.home.MainScreen
 import com.vitta.app.ui.screens.onboarding.OnboardingScreen
+import com.vitta.app.ui.screens.profile.HelpScreen
 import com.vitta.app.ui.theme.VittaColorRoles
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -43,7 +44,8 @@ object VittaRoutes {
     const val HabitConfig = "habit_config"
     const val CustomHabit = "custom_habit"
     const val EditHabit = "edit_habit/{habitId}"
-    const val Home = "home" // Inicio + Yo (antes: placeholder "design_system")
+    const val Home = "home" // Inicio, Hoy, Progreso, Logros y Yo
+    const val Help = "help" // Yo → Ayuda
 
     fun editHabit(habitId: Int) = "edit_habit/$habitId"
 }
@@ -222,6 +224,10 @@ fun VittaNavHost(
             )
         }
 
+        composable(VittaRoutes.Help) {
+            HelpScreen(onBack = { navController.popBackStack() })
+        }
+
         composable(VittaRoutes.Home) { entry ->
             var userName by remember { mutableStateOf("") }
             var userEmail by remember { mutableStateOf<String?>(null) }
@@ -237,6 +243,7 @@ fun VittaNavHost(
                 refreshRequests = refresh,
                 onAddHabit = { navController.navigate(VittaRoutes.HabitSelection) },
                 onEditHabit = { id -> navController.navigate(VittaRoutes.editHabit(id)) },
+                onOpenHelp = { navController.navigate(VittaRoutes.Help) },
                 onLogout = {
                     scope.launch {
                         tokenManager.clearToken()

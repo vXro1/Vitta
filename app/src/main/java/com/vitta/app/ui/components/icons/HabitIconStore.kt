@@ -4,9 +4,10 @@ import android.content.Context
 import android.content.SharedPreferences
 
 /**
- * Ícono elegido por el usuario para cada hábito. El backend no guarda íconos,
- * así que se recuerda en el teléfono (por id de hábito). Si no hay uno
- * guardado, se deduce del nombre como antes.
+ * Ícono de cada hábito en el teléfono (por id). La fuente de verdad es el
+ * campo `icono` del backend: [sync] lo copia aquí al cargar los hábitos, así
+ * las pantallas que solo conocen id y nombre (Progreso) muestran el mismo
+ * ícono. Los hábitos antiguos sin `icono` usan el guardado o el del nombre.
  */
 object HabitIconStore {
     private var prefs: SharedPreferences? = null
@@ -19,6 +20,12 @@ object HabitIconStore {
         HabitIcons.byId(prefs?.getString(key(habitId), null))
             ?: HabitIcons.forHabitName(nombre)
             ?: HabitIcons.Default
+
+    /** Copia el `icono` del backend (si es una clave conocida) al teléfono. */
+    fun sync(habitId: Int, icono: String?) {
+        val icon = HabitIcons.byId(icono) ?: return
+        if (prefs?.getString(key(habitId), null) != icon.id) save(habitId, icon)
+    }
 
     fun save(habitId: Int, icon: HabitIcon) {
         prefs?.edit()?.putString(key(habitId), icon.id)?.apply()

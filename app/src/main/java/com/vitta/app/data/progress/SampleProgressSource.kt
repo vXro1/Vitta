@@ -12,7 +12,7 @@ import kotlin.random.Random
  * siempre el mismo resultado, así la pantalla no "baila" al recargar.
  */
 class SampleProgressSource(
-    private val today: () -> LocalDate = { LocalDate.now(ZoneOffset.UTC) },
+    private val today: () -> LocalDate = { LocalDate.now() },
     private val daysOfHistory: Long = 70
 ) : ProgressSource {
 

@@ -14,17 +14,17 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.vitta.app.ui.components.navigation.VittaBottomNavBar
 import com.vitta.app.ui.components.navigation.VittaDestination
-import com.vitta.app.ui.screens.profile.AchievementsScreen
+import com.vitta.app.ui.screens.achievements.AchievementsScreen
 import com.vitta.app.ui.screens.profile.ProfileScreen
 import com.vitta.app.ui.screens.profile.ProfileViewModel
 import com.vitta.app.ui.screens.progress.ProgressScreen
-import com.vitta.app.ui.screens.today.TodayScreen
 import com.vitta.app.ui.theme.VittaColorRoles
 
 /**
  * Contenedor tras iniciar sesión: barra inferior con Inicio, Hoy, Progreso,
- * Logros y Perfil. Inicio y Hoy comparten el mismo [ChecklistViewModel] para
- * que un hábito marcado en una se vea al instante en la otra.
+ * Logros y Perfil. Inicio y Hoy comparten el mismo [ChecklistViewModel] (lo
+ * que se registra en una se ve en la otra) y Logros/Perfil comparten
+ * [ProfileViewModel].
  *
  * @param refreshRequests cambia cuando otra pantalla (p. ej. editar hábito)
  *   pide recargar la lista al volver.
@@ -36,6 +36,7 @@ fun MainScreen(
     refreshRequests: Int,
     onAddHabit: () -> Unit,
     onEditHabit: (Int) -> Unit,
+    onOpenHelp: () -> Unit,
     onLogout: () -> Unit
 ) {
     var tab by rememberSaveable { mutableStateOf(VittaDestination.Home) }
@@ -58,6 +59,8 @@ fun MainScreen(
 
     // Atrás desde otra pestaña vuelve a Inicio en vez de cerrar la app.
     BackHandler(enabled = tab != VittaDestination.Home) { tab = VittaDestination.Home }
+
+    val verLogros = { tab = VittaDestination.Achievements }
 
     Scaffold(
         containerColor = VittaColorRoles.background,
@@ -93,27 +96,32 @@ fun MainScreen(
                     userName = userName,
                     viewModel = checklistViewModel,
                     onAddHabit = onAddHabit,
-                    onEditHabit = onEditHabit
+                    onEditHabit = onEditHabit,
+                    onVerLogros = verLogros
                 )
             }
-            VittaDestination.Today -> TodayScreen(
-                viewModel = checklistViewModel,
-                onAddHabit = onAddHabit,
-                onEditHabit = onEditHabit,
-                modifier = modifier
-            )
+            VittaDestination.Today -> Box(modifier) {
+                TodayScreen(
+                    viewModel = checklistViewModel,
+                    onAddHabit = onAddHabit,
+                    onEditHabit = onEditHabit,
+                    onVerLogros = verLogros
+                )
+            }
             VittaDestination.Progress -> Box(modifier) {
                 ProgressScreen()
             }
-            VittaDestination.Achievements -> AchievementsScreen(viewModel = profileViewModel, modifier = modifier)
+            VittaDestination.Achievements -> Box(modifier) {
+                AchievementsScreen(viewModel = profileViewModel)
+            }
             VittaDestination.Profile -> Box(modifier) {
                 ProfileScreen(
                     userName = userName,
                     userEmail = userEmail,
-                    activeHabits = checklistState.cards.size,
-                    bestStreak = checklistState.bestStreakEver,
+                    onAddHabit = onAddHabit,
+                    onOpenHelp = onOpenHelp,
+                    onOpenAchievements = verLogros,
                     onLogout = onLogout,
-                    onOpenAchievements = { tab = VittaDestination.Achievements },
                     viewModel = profileViewModel
                 )
             }

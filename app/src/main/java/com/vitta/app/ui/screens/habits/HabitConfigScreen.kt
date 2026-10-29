@@ -105,6 +105,12 @@ fun HabitConfigScreen(
             )
         }
 
+        HabitFormSection(title = "¿A qué hora?", step = 3) {
+            HabitReminderTimeField(time = state.reminderTime, onTimeChange = viewModel::onReminderChange)
+            Spacer(Modifier.height(VittaSpacing.Sm))
+            HabitInfoNote(ReminderNote)
+        }
+
         HabitInfoNote("Cada vez que cumplas este hábito ganarás 10 VitaPuntos.")
     }
 }

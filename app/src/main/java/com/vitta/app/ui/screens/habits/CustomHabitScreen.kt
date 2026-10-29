@@ -39,7 +39,7 @@ fun CustomHabitScreen(
 
     HabitFormScaffold(
         title = "Nuevo hábito",
-        subtitle = "Créalo a tu medida en 4 pasos",
+        subtitle = "Créalo a tu medida en 5 pasos",
         onBack = onBack,
         bottomBar = {
             state.errorMessage?.let {
@@ -101,9 +101,20 @@ fun CustomHabitScreen(
             )
         }
 
+        HabitFormSection(title = "¿A qué hora?", step = 5) {
+            HabitReminderTimeField(time = state.reminderTime, onTimeChange = viewModel::onReminderChange)
+            Spacer(Modifier.height(VittaSpacing.Sm))
+            HabitInfoNote(ReminderNote)
+        }
+
         HabitInfoNote("Cada vez que cumplas este hábito ganarás 10 VitaPuntos.")
     }
 }
+
+/** La hora se guarda como recordatorio del hábito (`/api/recordatorios`) y ordena la pestaña «Hoy». */
+internal const val ReminderNote =
+    "La hora se guarda en tu cuenta y ubica el hábito en la mañana, la tarde o la noche de tu pestaña «Hoy»."
+
 
 /**
  * Esqueleto común de los formularios de hábito: cabecera con regreso,

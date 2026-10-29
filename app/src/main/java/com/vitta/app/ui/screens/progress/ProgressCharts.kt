@@ -473,23 +473,25 @@ private fun HeatDetail(cell: HeatCell) {
                 color = Mk.Muted,
                 modifier = Modifier.padding(top = 12.dp, bottom = 6.dp)
             )
-            cell.habitsDone.forEach { HabitDayRow(it.id, it.name, done = true) }
-            cell.habitsMissed.forEach { HabitDayRow(it.id, it.name, done = false) }
+            cell.habitsDone.forEach { HabitDayRow(it.id, it.name, done = true, nota = it.nota) }
+            cell.habitsMissed.forEach { HabitDayRow(it.id, it.name, done = false, nota = it.nota) }
         }
     }
 }
 
 /** Una línea por hábito: ✓ cumplido (oliva) o círculo vacío (sin marcar). */
 @Composable
-private fun HabitDayRow(id: Int, name: String, done: Boolean) {
+private fun HabitDayRow(id: Int, name: String, done: Boolean, nota: String? = null) {
     val icon = com.vitta.app.ui.components.icons.HabitIconStore.iconFor(id, name)
-    Row(
+    Column(
         Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp)
-            .semantics(mergeDescendants = true) { contentDescription = "$name: " + if (done) "cumplido" else "sin marcar" },
-        verticalAlignment = Alignment.CenterVertically
+            .semantics(mergeDescendants = true) {
+                contentDescription = "$name: " + (if (done) "cumplido" else "sin marcar") + (nota?.let { ". Nota: $it" } ?: "")
+            }
     ) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
         Box(
             Modifier
                 .size(22.dp)
@@ -528,6 +530,20 @@ private fun HabitDayRow(id: Int, name: String, done: Boolean) {
             style = figtree(600, 11.5f),
             color = if (done) Mk.OliveDeep else Mk.Muted
         )
+    }
+    // Nota del día de ese hábito (lo que escribió al registrarlo).
+    if (nota != null) {
+        Text(
+            "“$nota”",
+            style = figtree(500, 12.5f, 1.4f).copy(fontStyle = androidx.compose.ui.text.font.FontStyle.Italic),
+            color = Mk.Body,
+            modifier = Modifier
+                .padding(start = 32.dp, top = 4.dp)
+                .fillMaxWidth()
+                .background(Mk.Paper, RoundedCornerShape(12.dp))
+                .padding(horizontal = 10.dp, vertical = 8.dp)
+        )
+    }
     }
 }
 

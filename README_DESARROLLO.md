@@ -1,5 +1,3 @@
-nec
-
 # Guía para desarrolladores — Vitta Android
 
 Estado: **octubre de 2026**. Este documento resume lo que cambió en la app,
@@ -220,13 +218,17 @@ antiguas con "al día" (p. ej. `10 minutos al día`) se siguen leyendo bien.
 Al editar, si el usuario no toca la frecuencia, se reenvía la original sin
 cambios.
 
-### Lo que el backend NO guarda (limitaciones)
+### Campos nuevos del backend (rama main, commit 58dbf0a)
 
-| Dato                  | Comportamiento actual en la app                                                                                                |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| Hora del recordatorio | Se elige con el selector, pero**no se guarda**; la pantalla lo avisa. Tampoco existen notificaciones                     |
-| Icono elegido         | **No se guarda**; se deduce del nombre (`HabitIcons.forHabitName`). Si el usuario elige otro, la app avisa cuál verá |
-| Perfil                | No hay`GET/PUT /users/me`; Yo muestra nombre y correo guardados al iniciar sesión                                           |
+| Dato                  | Comportamiento actual en la app                                                                 |
+| --------------------- | ----------------------------------------------------------------------------------------------- |
+| Hora del recordatorio | Se guarda en `/api/recordatorios` y ordena la pestaña Hoy. Aún no hay notificaciones           |
+| Icono y categoría     | Se guardan en `icono` / `categoria`; la app muestra el del backend en todas las pantallas     |
+| Meta numérica         | `meta_valor` + `unidad`: permiten el avance parcial (`PATCH /api/habits/:id/progreso`)       |
+| Notas del día         | Campo `notas` del registro (columna `reflexion`)                                               |
+| Perfil                | `GET /api/users/me` (nombre, alta, hábitos, medallas, puntos). Editar perfil: pendiente en la app |
+
+Detalle de la integración: **README_INTEGRACION.md**.
 
 Tabla completa (problema → causa → endpoint → solución → impacto):
 **README_RECURSOS.md → "Limitaciones conocidas (backend)"**.
@@ -332,14 +334,11 @@ Con el backend corriendo y los usuarios de la sección 3:
 
 ## 11. Pendientes conocidos
 
-- Backend: columnas `hora_recordatorio` e `icono` (y sus campos en los DTO de Android).
 - Notificaciones locales para los recordatorios (WorkManager/AlarmManager).
-- Endpoint de perfil (`/users/me`).
+- Pantalla para editar perfil y contraseña (los endpoints ya existen).
 - Si se quieren exigir los requisitos de contraseña, validarlos en
   `RegisterViewModel` **y** en `validatePassword` del backend.
-- La app siempre arranca en la introducción, aunque haya una sesión
-  guardada (no hay inicio de sesión automático).
-- Las pestañas Progreso, Logros y Tienda del maquetado aún no existen.
+- La Tienda del maquetado aún no existe (el backend no la tiene).
 
 ---
 
@@ -353,3 +352,4 @@ Con el backend corriendo y los usuarios de la sección 3:
 | README_COLORES.md     | Paleta y contrastes                                                                |
 | README_COMPONENTES.md | Componentes del sistema de diseño                                                 |
 | README_RECURSOS.md    | Iconos Icons8 (licencia y atribución), mascota, fuentes, limitaciones del backend |
+| README_INTEGRACION.md | Integración de Valentina + Verónica con el backend nuevo y cómo probarla          |

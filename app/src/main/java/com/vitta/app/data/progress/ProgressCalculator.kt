@@ -21,7 +21,7 @@ object ProgressCalculator {
 
         val bars = when (period) {
             ProgressPeriod.Week -> days(from, to).map { day ->
-                val (done, scheduled) = dayTotals(habits, day)
+                val (done, scheduled) = dayTotals(history, day)
                 ProgressBar(
                     label = DayLetters[day.dayOfWeek.value - 1],
                     detail = "${DayNames[day.dayOfWeek.value - 1]} ${day.dayOfMonth} de ${MonthNames[day.monthValue - 1]}",
@@ -32,7 +32,7 @@ object ProgressCalculator {
                 )
             }
             ProgressPeriod.Month -> weeksOfMonth(from, to).map { (start, end) ->
-                val (done, scheduled) = rangeTotals(habits, start, minOf(end, today))
+                val (done, scheduled) = rangeTotals(history, start, minOf(end, today))
                 ProgressBar(
                     label = "${start.dayOfMonth}–${end.dayOfMonth}",
                     detail = "Del ${start.dayOfMonth} al ${end.dayOfMonth} de ${MonthNames[end.monthValue - 1]}",
@@ -44,18 +44,18 @@ object ProgressCalculator {
             }
         }
 
-        val (totalDone, totalScheduled) = rangeTotals(habits, from, minOf(to, today))
-        val (prevDone, prevScheduled) = rangeTotals(habits, prevFrom, prevTo)
+        val (totalDone, totalScheduled) = rangeTotals(history, from, minOf(to, today))
+        val (prevDone, prevScheduled) = rangeTotals(history, prevFrom, prevTo)
 
         val perfectDays = days(from, minOf(to, today)).count { day ->
-            val (done, scheduled) = dayTotals(habits, day)
+            val (done, scheduled) = dayTotals(history, day)
             scheduled > 0 && done >= scheduled
         }
 
         val heatStart = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)).minusWeeks(4)
         val heatmap = (0 until 35).map { offset ->
             val day = heatStart.plusDays(offset.toLong())
-            val (done, scheduled) = dayTotals(habits, day)
+            val (done, scheduled) = dayTotals(history, day)
             val level = when {
                 day.isAfter(today) -> -1
                 scheduled == 0 || done == 0 -> 0
@@ -66,8 +66,8 @@ object ProgressCalculator {
             val (hechos, faltantes) = habits.filter { isScheduled(it, day) }.partition { day in it.completedDays }
             HeatCell(
                 day, level, isToday = day == today, done = done, scheduled = scheduled,
-                habitsDone = hechos.map { DayHabit(it.id, it.name) },
-                habitsMissed = faltantes.map { DayHabit(it.id, it.name) }
+                habitsDone = hechos.map { DayHabit(it.id, it.name, it.notes[day]) },
+                habitsMissed = faltantes.map { DayHabit(it.id, it.name, it.notes[day]) }
             )
         }
 
@@ -136,15 +136,20 @@ object ProgressCalculator {
     private fun isScheduled(habit: HabitHistory, day: LocalDate): Boolean =
         (habit.startDate == null || !day.isBefore(habit.startDate)) && day.dayOfWeek in habit.schedule
 
-    /** (cumplidos, programados) de un día. Un cumplimiento solo cuenta si ese día tocaba. */
-    private fun dayTotals(habits: List<HabitHistory>, day: LocalDate): Pair<Int, Int> {
-        val scheduled = habits.filter { isScheduled(it, day) }
+    /**
+     * (cumplidos, programados) de un día. Si el backend entregó el total de ese
+     * día (`GET /api/progress`) se usa tal cual; si no, se calcula con el
+     * historial por hábito (un cumplimiento solo cuenta si ese día tocaba).
+     */
+    private fun dayTotals(history: ProgressHistory, day: LocalDate): Pair<Int, Int> {
+        history.dailyTotals?.get(day)?.let { return it.done to it.scheduled }
+        val scheduled = history.habits.filter { isScheduled(it, day) }
         return scheduled.count { day in it.completedDays } to scheduled.size
     }
 
-    private fun rangeTotals(habits: List<HabitHistory>, from: LocalDate, to: LocalDate): Pair<Int, Int> =
+    private fun rangeTotals(history: ProgressHistory, from: LocalDate, to: LocalDate): Pair<Int, Int> =
         days(from, to).fold(0 to 0) { (d, s), day ->
-            val (done, scheduled) = dayTotals(habits, day)
+            val (done, scheduled) = dayTotals(history, day)
             (d + done) to (s + scheduled)
         }
 
