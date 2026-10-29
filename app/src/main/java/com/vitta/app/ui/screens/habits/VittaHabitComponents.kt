@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import com.vitta.app.ui.components.common.VittaAssetImage
 import com.vitta.app.ui.components.common.VittaIconAssets
 import com.vitta.app.ui.theme.VittaColorRoles
+import com.vitta.app.ui.theme.VittaIconTint
 import com.vitta.app.ui.theme.VittaShapes
 import com.vitta.app.ui.theme.VittaSizes
 import com.vitta.app.ui.theme.VittaSpacing
@@ -59,7 +60,8 @@ fun VittaHabitIconBubble(
             painter = painterResource(icon.drawable),
             contentDescription = null,
             modifier = Modifier.fillMaxSize(0.64f),
-            contentScale = ContentScale.Fit
+            contentScale = ContentScale.Fit,
+            colorFilter = VittaIconTint.habit
         )
     }
 }
@@ -149,7 +151,8 @@ fun VittaWaterTracker(
                 VittaAssetImage(
                     assetPath = VittaIconAssets.icon(if (isFilled) "agua-lleno" else "agua-vacio"),
                     contentDescription = null,
-                    size = VittaSizes.TrackerChip * 0.6f
+                    size = VittaSizes.TrackerChip * 0.6f,
+                    colorFilter = VittaIconTint.habit
                 )
             }
         }
@@ -160,7 +163,7 @@ fun VittaWaterTracker(
 // Previews
 // ---------------------------------------------------------------------------
 
-@Preview(showBackground = true, backgroundColor = 0xFFF6FBF8)
+@Preview(showBackground = true, backgroundColor = 0xFFF9F4EE)
 @Composable
 private fun VittaHabitRowPreview() {
     VittaTheme {

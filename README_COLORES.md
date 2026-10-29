@@ -2,80 +2,109 @@
 
 Fuente: `ui/theme/Color.kt`.
 
-**2026-10 — paleta renovada.** El verde oliva (`#778661`) y los beige/grises
-desaturados del maquetado original (`#EFE6D6`, `#F4EFE4`, `#8A9283`…) se
-reemplazaron por una paleta clara, viva y fresca: verde esmeralda, naranja,
-ámbar y fondos blanco-menta. Los **nombres** de las constantes no cambiaron,
-así todas las pantallas heredan la paleta sin tocar cada una.
+Vitta usa la **paleta de la marca** definida en la especificación UX:
+cinco colores cálidos y naturales, más los tonos derivados del maquetado
+original.
+
+| Color | HEX | Uso conceptual |
+|---|---|---|
+| Verde oliva | `#778661` | Bienestar, naturaleza, progreso y hábitos saludables |
+| Amarillo | `#F1AA52` | Energía amable, recompensas y puntos de atención |
+| Verde oscuro | `#2D403E` | Contraste, textos destacados y elementos estructurales |
+| Terracota | `#A55729` | Acentos: racha, enlaces, recordatorios, categorías |
+| Marfil / crema | `#F9F4EE` | Fondos principales y sensación cálida |
 
 Contrastes calculados con la fórmula de luminancia relativa de WCAG 2.1
-(texto normal ≥ 4.5:1).
+sobre el fondo marfil (texto normal ≥ 4.5:1; texto grande en negrita ≥ 3:1).
 
-## Marca — verde principal
+## Marca — verde oliva
 
 | Nombre | HEX | Uso | Contraste |
 |---|---|---|---|
-| `GreenPrimary` | `#0A8754` | Botón primario, selección, progreso | 4.56:1 con texto blanco |
-| `GreenHover` | `#08774A` | Hover del botón primario | |
-| `GreenPressed` | `#066B42` | Presionado; texto verde sobre fondos claros | 6.6:1 sobre blanco, 5.7:1 sobre `SurfaceTint` |
-| `GreenMid` | `#2FB67C` | Barras de progreso secundarias | decorativo |
-| `GreenSoft` | `#6ED3A3` | Relleno terciario | decorativo |
-| `GreenPale` | `#B5EBD0` | Bordes de tarjetas completadas, texto sobre toast oscuro | decorativo |
-| `GreenTrack` | `#D6F2E4` | Riel de progreso sin rellenar | decorativo |
+| `GreenPrimary` | `#778661` | Botón primario, selección, progreso | 3.9:1 con texto blanco → solo etiquetas en negrita grande (≥ 14 pt) |
+| `GreenHover` | `#66754F` | Hover del botón primario | 5.0:1 con blanco |
+| `GreenPressed` | `#56633F` | Presionado; texto verde sobre fondos claros | 5.9:1 sobre marfil |
+| `GreenMid` | `#9CAA86` | Barras de progreso secundarias | decorativo |
+| `GreenSoft` | `#A9B893` | Relleno terciario | decorativo |
+| `GreenPale` | `#C3CDB1` | Relleno claro, texto sobre toast oscuro | decorativo |
+| `GreenTrack` | `#D4DCC2` | Riel de progreso sin rellenar | decorativo |
 
 ## Acentos
 
 | Nombre | HEX | Uso | Contraste |
 |---|---|---|---|
-| `OrangeAccent` | `#C2410C` | Racha, enlaces | 5.2:1 sobre blanco |
-| `OrangeAccentHover` | `#9A3412` | Hover de enlaces | |
-| `GoldAccent` | `#FFB020` | Anillo de progreso, puntos, logros | usar solo con texto oscuro (7.6:1 con `TextPrimary`) |
-| `SkyAccent` | `#1C6FC4` | Recordatorio / hora | ≈5:1 sobre blanco |
-| `SkySoft` | `#E4F0FB` | Fondo del campo de hora | decorativo |
+| `OrangeAccent` | `#A55729` | Racha, enlaces, recordatorios (terracota) | 4.8:1 sobre marfil |
+| `OrangeAccentHover` | `#7E3F1C` | Hover de enlaces | 7.3:1 |
+| `GoldAccent` | `#F1AA52` | Puntos, logros | usar solo con texto oscuro (5.5:1 con `TextPrimary`) |
+| `SkyAccent` | = `OrangeAccent` | Recordatorio / hora (nombre conservado; la marca no tiene azul) | |
+| `SkySoft` | `#F6E7DC` | Fondo del campo de hora | decorativo |
 
 ## Superficies
 
 | Nombre | HEX | Uso |
 |---|---|---|
-| `Background` | `#F6FBF8` | Fondo de pantalla (blanco con un toque menta) |
-| `Surface` | `#FFFFFF` | Tarjetas, campos |
-| `SurfaceVariant` | `#E3F5EC` | Burbuja de icono |
-| `SurfaceMuted` | `#EEF5F1` | Chips secundarios, controles segmentados |
-| `SurfaceTint` | `#DDF3E7` | Estado seleccionado / completado |
+| `Background` | `#F9F4EE` | Fondo de pantalla (marfil) |
+| `Surface` | `#FFFCF8` | Tarjetas, campos |
+| `SurfaceVariant` | `#EFE6D6` | Burbuja de icono |
+| `SurfaceMuted` | `#F4EFE4` | Chips secundarios, controles segmentados |
+| `SurfaceTint` | `#EEF0E3` | Estado seleccionado / completado |
 
 ## Bordes
 
 | Nombre | HEX |
 |---|---|
-| `BorderSubtle` | `#C9DDD3` |
-| `BorderMuted` | `#DCE9E2` |
+| `BorderSubtle` | `#DFD4C2` |
+| `BorderMuted` | `#E3D9C8` |
 
 ## Texto
 
 | Nombre | HEX | Uso | Contraste sobre `Background` |
 |---|---|---|---|
-| `TextPrimary` | `#14312A` | Títulos y texto principal | 13.4:1 |
-| `TextSecondary` | `#3F5C54` | Texto de apoyo | 7.0:1 |
-| `TextMuted` | `#5A746C` | Captions, metadatos | 4.8:1 (antes `#8A9283` ≈ 3:1, insuficiente) |
-| `TextFaint` | `#93A79F` | Solo deshabilitado/decorativo | 2.5:1 — no usar para texto que deba leerse |
+| `TextPrimary` | `#2D403E` | Títulos y texto principal | 10.0:1 |
+| `TextSecondary` | `#5C6A5B` | Texto de apoyo | 5.2:1 |
+| `TextMuted` | `#66705F` | Captions, metadatos | 4.7:1 (el original `#8A9283` daba ≈ 3:1) |
+| `TextFaint` | `#A9A493` | Solo deshabilitado/decorativo | 2.3:1 — no usar para texto que deba leerse |
 
 ## Overlays y estados
 
 | Nombre | Valor | Uso |
 |---|---|---|
-| `ScrimBackdrop` | `#A314312A` | Fondo oscuro detrás de diálogos |
-| `ToastSurface` | `#14312A` | Toast/snackbar |
-| `SelectionTint` | `#470A8754` | Selección de texto |
+| `ScrimBackdrop` | `#A32D403E` | Fondo oscuro detrás de diálogos |
+| `ToastSurface` | `#2D403E` | Toast/snackbar |
+| `SelectionTint` | `#47A55729` | Selección de texto |
 | `Success` | `GreenPrimary` | |
 | `Warning` | `GoldAccent` | |
-| `Info` | `SkyAccent` | |
-| `Error` | `#C62828` | 5.6:1 sobre blanco |
+| `Info` | `OrangeAccent` | |
+| `Error` | `#B3453A` | 5.0:1 sobre marfil |
+
+## Rellenos con texto blanco
+
+El oliva base (`GreenPrimary`, 3.9:1 con blanco) solo sirve para íconos,
+bordes, barras y texto grande en negrita. Todo relleno que lleve **texto
+blanco normal** (botón primario, píldora de nivel, chips y días
+seleccionados, check de hábito completado) usa `VittaColorRoles.primaryStrong`
+(= `GreenHover`, 5.0:1).
+
+## Terracota e íconos
+
+- La terracota (`OrangeAccent`) ya no se usa en la interfaz: enlaces y
+  etiquetas van en `GreenPressed`, las barras de hábitos en oliva, la barra
+  de nivel/VitaPuntos en amarillo (`GoldAccent`, son recompensas) y las
+  acciones destructivas (desmarcar, eliminar, cerrar sesión) en `Error`.
+- Los íconos de hábitos (Icons8, a color) se pintan con
+  `VittaIconTint.habit`: un duotono verde oscuro → oliva pálido que
+  conserva el dibujo y combina con la app.
 
 ## Dónde viven en el código
 
 - Valores crudos: `VittaColors` (`Color.kt`).
 - Alias semánticos: `VittaColorRoles` (p. ej. `VittaColorRoles.primary`,
-  `VittaColorRoles.reminder`).
+  `VittaColorRoles.primaryStrong`, `VittaColorRoles.reminder`).
+- Nombres del maquetado: `Mk` (`VittaMockupTokens.kt`), usado por Progreso,
+  Logros y Perfil. Cada valor apunta a `VittaColors`; el gris `#8A9283` del
+  maquetado (≈3:1) se sustituyó por `TextMuted`.
+- Recursos XML puente (tema del manifest, fondo del ícono):
+  `res/values/colors.xml` y `res/values/ic_launcher_background.xml`.
 - Material 3: `VittaTheme` (`Theme.kt`). **Por ahora se usa siempre el
   esquema claro**: todas las pantallas pintan colores claros explícitos y
   seguir el modo oscuro del sistema mezclaba componentes oscuros de Material

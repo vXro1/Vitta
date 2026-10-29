@@ -7,8 +7,10 @@ e insignias, y acompaña todo con una mascota ilustrada.
 Este proyecto es la **migración del maquetado HTML/CSS/JS** (carpeta
 `../prototipo/Vitta App.html`) a un proyecto nativo de Android Studio. El
 maquetado no se modificó ni se borró, pero desde octubre de 2026 la app
-ya no lo sigue al pie de la letra: la paleta, la tipografía (Nunito) y los
-iconos (Icons8) se renovaron (ver README_COLORES.md y README_RECURSOS.md).
+ya no lo sigue al pie de la letra: la tipografía (Nunito) y los iconos
+(Icons8) se renovaron (ver README_ESTILOS.md y README_RECURSOS.md). La
+paleta es la de la marca (verde oliva, amarillo, verde oscuro, terracota y
+marfil; ver README_COLORES.md).
 
 > **¿Vas a desarrollar o probar la app?** Empieza por
 > **[README_DESARROLLO.md](README_DESARROLLO.md)**: qué cambió, cómo
@@ -24,12 +26,15 @@ conectadas al backend (`../Vitta-Plataforma-Web-de-Gesti-n-de-H-bitos-y-Gamifica
 - Selección de hábitos predefinidos, creación y **edición** de hábitos
   (meta con cantidad + unidad, frecuencia, selector de hora, catálogo de
   iconos de Icons8 con búsqueda).
-- Inicio (dashboard con progreso, rachas y registro diario) y **Yo**
-  (perfil y cerrar sesión).
-- Tipografía **Nunito** en toda la app y paleta clara y viva.
+- Inicio (dashboard con progreso, rachas, avance parcial, notas del día y
+  celebraciones), **Hoy** (checklist por momento del día), **Progreso**
+  (gráficas y mapa de calor), **Logros** (medallas con su avance) y **Perfil**
+  (nivel, VitaPuntos y estadísticas reales).
+- Tipografía **Nunito** en toda la app y la paleta de marca (verde oliva, terracota y marfil).
 
-Limitaciones del backend (hora del recordatorio e icono no se guardan,
-sin endpoint de perfil): ver README_DESARROLLO.md §6.
+Integración de las ramas de Valentina y Verónica con el backend nuevo
+(zona horaria, íconos, notas, logros automáticos, recordatorios):
+ver **README_INTEGRACION.md**.
 
 ## Tecnologías
 

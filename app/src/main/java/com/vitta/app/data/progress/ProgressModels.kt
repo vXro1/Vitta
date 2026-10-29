@@ -20,19 +20,31 @@ data class HabitHistory(
     val name: String,
     /** Días de la semana en que toca el hábito (los 7 si es diario). */
     val schedule: Set<DayOfWeek>,
-    /** Días (UTC, como el backend) con un registro cumplido. */
+    /** Días (locales del usuario, como el campo `dia` del backend) con un registro cumplido. */
     val completedDays: Set<LocalDate>,
     /** Racha máxima histórica. */
     val bestStreak: Int,
     /** Día de creación: antes de esa fecha el hábito no cuenta. null = sin límite. */
-    val startDate: LocalDate? = null
+    val startDate: LocalDate? = null,
+    /** Nota del día (`notas` del registro), por día local. */
+    val notes: Map<LocalDate, String> = emptyMap()
 )
 
 data class ProgressHistory(
     val habits: List<HabitHistory>,
     /** true si el historial es de ejemplo (la UI lo indica). */
-    val isSample: Boolean
+    val isSample: Boolean,
+    /**
+     * Totales por día que entrega el backend (`GET /api/progress`). Cuando un
+     * día está aquí, las barras, el resumen y el mapa de calor usan este dato;
+     * si falta (o es null) se calcula desde [habits]. El detalle "Por hábito"
+     * siempre sale de [habits], porque el endpoint no lo trae.
+     */
+    val dailyTotals: Map<LocalDate, DayTotals>? = null
 )
+
+/** Hábitos cumplidos y programados en un día. */
+data class DayTotals(val done: Int, val scheduled: Int)
 
 sealed interface ProgressSourceResult {
     data class Success(val history: ProgressHistory) : ProgressSourceResult
@@ -61,12 +73,23 @@ data class ProgressBar(
     val ratio: Float get() = if (scheduled == 0) 0f else (done.toFloat() / scheduled).coerceIn(0f, 1f)
 }
 
+/** Hábito que tocaba un día del mapa de calor. */
+data class DayHabit(val id: Int, val name: String, val nota: String? = null)
+
 /** Celda del mapa de calor. [level]: -1 futuro, 0 nada, 1 poco, 2 casi, 3 completo. */
 data class HeatCell(
     val date: LocalDate,
     val level: Int,
-    val isToday: Boolean
-)
+    val isToday: Boolean,
+    val done: Int = 0,
+    val scheduled: Int = 0,
+    /** Nombres de los hábitos que tocaban ese día y se cumplieron. */
+    val habitsDone: List<DayHabit> = emptyList(),
+    /** Nombres de los hábitos que tocaban ese día y no se marcaron. */
+    val habitsMissed: List<DayHabit> = emptyList()
+) {
+    val ratio: Float get() = if (scheduled == 0) 0f else (done.toFloat() / scheduled).coerceIn(0f, 1f)
+}
 
 /** Cumplimiento de un hábito dentro del periodo. */
 data class HabitTrend(

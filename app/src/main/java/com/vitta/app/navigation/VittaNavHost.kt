@@ -16,6 +16,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.vitta.app.data.local.TokenManager
 import com.vitta.app.data.mock.PredefinedHabit
+import com.vitta.app.data.remote.SessionEvents
 import com.vitta.app.data.repository.HabitRepository
 import com.vitta.app.data.repository.HabitsResult
 import com.vitta.app.ui.screens.auth.LoginScreen
@@ -27,11 +28,13 @@ import com.vitta.app.ui.screens.habits.HabitSelectionScreen
 import com.vitta.app.ui.screens.home.FirstHabitTeaserScreen
 import com.vitta.app.ui.screens.home.MainScreen
 import com.vitta.app.ui.screens.onboarding.OnboardingScreen
+import com.vitta.app.ui.screens.profile.HelpScreen
 import com.vitta.app.ui.theme.VittaColorRoles
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 object VittaRoutes {
+    const val Start = "start"
     const val Onboarding = "onboarding"
     const val Login = "login"
     const val Register = "register"
@@ -41,7 +44,8 @@ object VittaRoutes {
     const val HabitConfig = "habit_config"
     const val CustomHabit = "custom_habit"
     const val EditHabit = "edit_habit/{habitId}"
-    const val Home = "home" // Inicio + Yo (antes: placeholder "design_system")
+    const val Home = "home" // Inicio, Hoy, Progreso, Logros y Yo
+    const val Help = "help" // Yo → Ayuda
 
     fun editHabit(habitId: Int) = "edit_habit/$habitId"
 }
@@ -53,12 +57,22 @@ private const val RefreshHomeKey = "refresh_home"
 fun VittaNavHost(
     modifier: Modifier = Modifier,
     navController: NavHostController = rememberNavController(),
-    startDestination: String = VittaRoutes.Onboarding
+    startDestination: String = VittaRoutes.Start
 ) {
     val context = LocalContext.current
     val tokenManager = remember { TokenManager(context) }
     val scope = rememberCoroutineScope()
     var pendingHabits by remember { mutableStateOf<List<PredefinedHabit>>(emptyList()) }
+
+    // El backend rechazó el token (vencido o inválido): ApiClient ya borró la sesión.
+    LaunchedEffect(Unit) {
+        SessionEvents.expired.collect {
+            val route = navController.currentBackStackEntry?.destination?.route
+            if (route !in setOf(VittaRoutes.Login, VittaRoutes.Register, VittaRoutes.Onboarding, VittaRoutes.Start)) {
+                navController.navigate(VittaRoutes.Login) { popUpTo(0) }
+            }
+        }
+    }
 
     // Tras crear hábitos se vuelve a Home limpiando la pila (no se puede "volver" al formulario ya guardado).
     val goHomeAfterSaving = {
@@ -67,6 +81,18 @@ fun VittaNavHost(
     }
 
     NavHost(navController = navController, startDestination = startDestination, modifier = modifier) {
+
+        // Con sesión guardada se entra directo; sin sesión se muestra el onboarding.
+        composable(VittaRoutes.Start) {
+            LaunchedEffect(Unit) {
+                val destination =
+                    if (tokenManager.tokenFlow.first().isNullOrBlank()) VittaRoutes.Onboarding else VittaRoutes.HomeGate
+                navController.navigate(destination) {
+                    popUpTo(VittaRoutes.Start) { inclusive = true }
+                }
+            }
+            LoadingScreen()
+        }
 
         composable(VittaRoutes.Onboarding) {
             OnboardingScreen(
@@ -109,21 +135,22 @@ fun VittaNavHost(
 
         // Consulta si el usuario ya tiene hábitos y decide a dónde mandarlo.
         // Con hábitos → Inicio. Sin hábitos → pantalla "primer día".
+        // Si falla la red se va a Inicio, que muestra el error con "Reintentar".
         composable(VittaRoutes.HomeGate) {
             val repository = remember { HabitRepository() }
             LaunchedEffect(Unit) {
                 val destination = when (val result = repository.listHabits()) {
                     is HabitsResult.Success ->
                         if (result.habits.isEmpty()) VittaRoutes.FirstHabitTeaser else VittaRoutes.Home
-                    is HabitsResult.Error -> VittaRoutes.FirstHabitTeaser
+                    is HabitsResult.Error -> VittaRoutes.Home
                 }
-                navController.navigate(destination) {
-                    popUpTo(VittaRoutes.HomeGate) { inclusive = true }
+                if (navController.currentBackStackEntry?.destination?.route == VittaRoutes.HomeGate) {
+                    navController.navigate(destination) {
+                        popUpTo(VittaRoutes.HomeGate) { inclusive = true }
+                    }
                 }
             }
-            Box(Modifier.fillMaxSize().background(VittaColorRoles.background), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = VittaColorRoles.primary)
-            }
+            LoadingScreen()
         }
 
         composable(VittaRoutes.FirstHabitTeaser) {
@@ -197,6 +224,10 @@ fun VittaNavHost(
             )
         }
 
+        composable(VittaRoutes.Help) {
+            HelpScreen(onBack = { navController.popBackStack() })
+        }
+
         composable(VittaRoutes.Home) { entry ->
             var userName by remember { mutableStateOf("") }
             var userEmail by remember { mutableStateOf<String?>(null) }
@@ -212,6 +243,7 @@ fun VittaNavHost(
                 refreshRequests = refresh,
                 onAddHabit = { navController.navigate(VittaRoutes.HabitSelection) },
                 onEditHabit = { id -> navController.navigate(VittaRoutes.editHabit(id)) },
+                onOpenHelp = { navController.navigate(VittaRoutes.Help) },
                 onLogout = {
                     scope.launch {
                         tokenManager.clearToken()
@@ -220,5 +252,12 @@ fun VittaNavHost(
                 }
             )
         }
+    }
+}
+
+@Composable
+private fun LoadingScreen() {
+    Box(Modifier.fillMaxSize().background(VittaColorRoles.background), contentAlignment = Alignment.Center) {
+        CircularProgressIndicator(color = VittaColorRoles.primary)
     }
 }

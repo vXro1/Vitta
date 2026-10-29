@@ -1,6 +1,20 @@
 package com.vitta.app.ui.screens.home
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.automirrored.outlined.StickyNote2
+import androidx.compose.material.icons.outlined.EditNote
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.runtime.saveable.rememberSaveable
+import com.vitta.app.data.remote.dto.LogroDto
+import com.vitta.app.ui.components.feedback.VittaRewardSheet
+import com.vitta.app.ui.components.feedback.VittaStreakDialog
+import com.vitta.app.ui.components.progress.VittaInsigniaBadge
+import com.vitta.app.ui.screens.profile.insigniaPara
+import com.vitta.app.ui.theme.Mk
+import com.vitta.app.ui.theme.caprasimo
+import com.vitta.app.ui.theme.figtree
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -11,6 +25,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -54,14 +69,15 @@ private val DashboardMaxWidth = 640.dp
 /**
  * Inicio (dashboard): encabezado con nivel, tarjeta principal con racha,
  * VitaPuntos y barra de nivel, lista "Hoy", y los bloques de abajo
- * (dormir, retos y Vitta Store, definidos en DashboardExtras.kt).
+ * y las celebraciones (nuevo día de racha, medalla desbloqueada).
  */
 @Composable
 fun ChecklistScreen(
     userName: String,
     viewModel: ChecklistViewModel,
     onAddHabit: () -> Unit,
-    onEditHabit: (Int) -> Unit
+    onEditHabit: (Int) -> Unit,
+    onVerLogros: () -> Unit = {}
 ) {
     val state by viewModel.uiState.collectAsState()
 
@@ -72,12 +88,9 @@ fun ChecklistScreen(
         return
     }
 
-    // TODO: conectar con el backend cuando existan puntos y nivel.
-    val level = 5
-    val points = 1240
-    val levelName = "Impulsor"
-    val pointsToNext = 760
-    val levelProgress = 0.3f
+    var undoTarget by remember { mutableStateOf<HabitCardUiState?>(null) }
+    var noteTargetId by remember { mutableStateOf<Int?>(null) }
+    val points = state.puntos
 
     Box(Modifier.fillMaxSize().background(VittaColorRoles.background), contentAlignment = Alignment.TopCenter) {
         LazyColumn(
@@ -87,7 +100,7 @@ fun ChecklistScreen(
             contentPadding = PaddingValues(VittaSpacing.Lg),
             verticalArrangement = Arrangement.spacedBy(VittaSpacing.Md)
         ) {
-            item { HeaderBlock(userName = userName, level = level) }
+            item { HeaderBlock(userName = userName, level = points?.nivel) }
 
             state.errorMessage?.let { message ->
                 item {
@@ -95,6 +108,7 @@ fun ChecklistScreen(
                     Spacer(Modifier.height(VittaSpacing.Sm))
                     VittaPrimaryButton(text = "Reintentar", onClick = viewModel::load)
                 }
+                if (state.cards.isEmpty()) return@LazyColumn
             }
 
             if (state.errorMessage == null && state.cards.isEmpty()) {
@@ -102,16 +116,20 @@ fun ChecklistScreen(
                 return@LazyColumn
             }
 
-            if (state.cards.isNotEmpty()) {
+            val rachaPerdida = state.rachaPerdida
+            if (rachaPerdida != null) {
+                // Mockup: el aviso "Racha terminada" ocupa el lugar de la tarjeta principal.
+                item { RachaTerminadaCard(rachaPerdida, onEmpezar = viewModel::dismissRachaPerdida) }
+            } else {
                 item {
                     HeroCard(
                         doneCount = state.doneToday,
                         totalCount = state.todayCards.size,
                         racha = state.bestCurrentStreak,
-                        points = points,
-                        levelName = levelName,
-                        pointsToNext = pointsToNext,
-                        levelProgress = levelProgress
+                        points = points?.puntos_totales,
+                        levelName = points?.nombre_nivel,
+                        pointsToNext = points?.puntos_para_siguiente,
+                        levelProgress = points?.progresoNivel ?: 0f
                     )
                 }
             }
@@ -140,19 +158,16 @@ fun ChecklistScreen(
             }
 
             items(state.todayCards, key = { it.habit.id }) { card ->
-                HabitDashboardCard(card = card, viewModel = viewModel, onEdit = { onEditHabit(card.habit.id) })
+                HabitDashboardCard(
+                    card = card,
+                    viewModel = viewModel,
+                    onEdit = { onEditHabit(card.habit.id) },
+                    onUndoRequest = { undoTarget = card },
+                    onNoteRequest = { noteTargetId = card.habit.id }
+                )
             }
 
-            item {
-                TextButton(
-                    onClick = onAddHabit,
-                    colors = ButtonDefaults.textButtonColors(contentColor = VittaColorRoles.primaryPressed)
-                ) {
-                    Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(VittaSpacing.Xxs))
-                    Text("Nuevo hábito", style = VittaTextStyles.button)
-                }
-            }
+            item { AddHabitButton(onAddHabit) }
 
             if (state.otherCards.isNotEmpty()) {
                 item {
@@ -162,28 +177,325 @@ fun ChecklistScreen(
                     )
                 }
                 items(state.otherCards, key = { "other_${it.habit.id}" }) { card ->
-                    HabitDashboardCard(card = card, viewModel = viewModel, onEdit = { onEditHabit(card.habit.id) })
+                    HabitDashboardCard(
+                        card = card,
+                        viewModel = viewModel,
+                        onEdit = { onEditHabit(card.habit.id) },
+                        onUndoRequest = { undoTarget = card },
+                        onNoteRequest = { noteTargetId = card.habit.id }
+                    )
                 }
             }
 
-            // ---- Bloques de DashboardExtras.kt ----
-            item { SleepCard() }
-
-            item { SectionTitle(title = "Tus retos") }
-
-            items(sampleChallenges, key = { it.title }) { challenge ->
-                ChallengeCard(challenge)
-            }
-
-            item { StoreBanner(onClick = { /* TODO: navegar a la tienda */ }) }
-
             item { Spacer(Modifier.height(VittaSpacing.Xl)) }
+        }
+
+        RachaSumadaDialog(state.rachaSumada, onDismiss = viewModel::dismissRachaSumada)
+
+        // Medalla recién desbloqueada (último hijo del Box: el scrim solo cubre esta pantalla).
+        LogroDesbloqueadoSheet(
+            logro = state.logroCelebrado,
+            onDismiss = viewModel::dismissCelebration,
+            onVerLogros = {
+                viewModel.dismissCelebration()
+                onVerLogros()
+            }
+        )
+    }
+
+    undoTarget?.let { card ->
+        UndoRecordDialog(
+            habitName = card.habit.nombre,
+            onConfirm = { viewModel.onUndo(card.habit.id); undoTarget = null },
+            onDismiss = { undoTarget = null }
+        )
+    }
+
+    noteTargetId?.let { id ->
+        state.cards.find { it.habit.id == id }?.let { card ->
+            HabitNoteDialog(
+                card = card,
+                onSave = { texto -> viewModel.saveNote(id, texto); noteTargetId = null },
+                onDismiss = { noteTargetId = null }
+            )
+        }
+    }
+}
+
+/**
+ * Nota del día de un hábito: qué leíste, cómo te sentiste… Se guarda en el
+ * registro de hoy (`notas`) y se ve luego en el detalle del día de Progreso.
+ */
+@Composable
+internal fun HabitNoteDialog(card: HabitCardUiState, onSave: (String) -> Unit, onDismiss: () -> Unit) {
+    var texto by rememberSaveable(card.habit.id) { mutableStateOf(card.nota.orEmpty()) }
+    val teniaNota = !card.nota.isNullOrBlank()
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = VittaColorRoles.surface,
+        title = {
+            Text("Nota de hoy · ${card.habit.nombre}", style = VittaTextStyles.heading, color = VittaColorRoles.textPrimary)
+        },
+        text = {
+            Column {
+                Text(
+                    notePrompt(card.habit.nombre),
+                    style = VittaTextStyles.bodySmall,
+                    color = VittaColorRoles.textSecondary
+                )
+                Spacer(Modifier.height(VittaSpacing.Md))
+                OutlinedTextField(
+                    value = texto,
+                    onValueChange = { if (it.length <= NOTA_MAX) texto = it },
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 120.dp),
+                    placeholder = { Text("Escribe aquí…", style = VittaTextStyles.body, color = VittaColorRoles.textMuted) },
+                    textStyle = VittaTextStyles.body.copy(color = VittaColorRoles.textPrimary),
+                    shape = VittaShapes.medium,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = VittaColorRoles.primaryPressed,
+                        unfocusedBorderColor = VittaColorRoles.border,
+                        cursorColor = VittaColorRoles.primaryPressed,
+                        focusedContainerColor = VittaColorRoles.background,
+                        unfocusedContainerColor = VittaColorRoles.background
+                    )
+                )
+                Text(
+                    "${texto.length}/$NOTA_MAX",
+                    style = VittaTextStyles.caption,
+                    color = VittaColorRoles.textMuted,
+                    textAlign = TextAlign.End,
+                    modifier = Modifier.fillMaxWidth().padding(top = VittaSpacing.Xxs)
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onSave(texto) }, enabled = texto.isNotBlank() || teniaNota) {
+                Text(
+                    if (texto.isBlank() && teniaNota) "Borrar nota" else "Guardar",
+                    style = VittaTextStyles.button,
+                    color = if (texto.isBlank() && teniaNota) VittaColors.Error else VittaColorRoles.primaryPressed
+                )
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancelar", style = VittaTextStyles.button, color = VittaColorRoles.textSecondary)
+            }
+        }
+    )
+}
+
+/** Pregunta guía según el hábito, para que escribir la nota sea fácil. */
+private fun notePrompt(nombre: String): String {
+    val n = nombre.lowercase()
+    return when {
+        "leer" in n || "lectura" in n -> "¿Qué leíste hoy? Un libro, un capítulo o una idea que te quedó."
+        "yoga" in n || "ejercicio" in n || "caminar" in n || "correr" in n -> "¿Qué rutina hiciste y cómo se sintió tu cuerpo?"
+        "meditar" in n -> "¿Cómo te sentiste antes y después de meditar?"
+        "dormir" in n -> "¿Cómo dormiste? ¿Te despertaste descansado?"
+        "agua" in n -> "¿Te costó llegar a la meta? ¿Qué te ayudó?"
+        else -> "¿Cómo te fue hoy con este hábito? Anota lo que quieras recordar."
+    }
+}
+
+@Composable
+internal fun AddHabitButton(onAddHabit: () -> Unit) {
+    TextButton(
+        onClick = onAddHabit,
+        modifier = Modifier.heightIn(min = 48.dp),
+        colors = ButtonDefaults.textButtonColors(contentColor = VittaColorRoles.primaryPressed)
+    ) {
+        Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(VittaSpacing.Xxs))
+        Text("Nuevo hábito", style = VittaTextStyles.button)
+    }
+}
+
+/** Confirmación antes de desmarcar: borrar el registro también quita sus VitaPuntos. */
+@Composable
+internal fun UndoRecordDialog(habitName: String, onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = VittaColorRoles.surface,
+        title = { Text("¿Desmarcar \"$habitName\"?", style = VittaTextStyles.heading, color = VittaColorRoles.textPrimary) },
+        text = {
+            Text(
+                "Se borrará el registro de hoy y los 10 VitaPuntos que te dio. Tu racha se recalcula.",
+                style = VittaTextStyles.body,
+                color = VittaColorRoles.textSecondary
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text("Desmarcar", style = VittaTextStyles.button, color = VittaColors.Error)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancelar", style = VittaTextStyles.button, color = VittaColorRoles.textSecondary)
+            }
+        }
+    )
+}
+
+/**
+ * Modal "¡Felicitaciones!" al sumar un nuevo día de racha ([VittaStreakDialog]),
+ * con la mascota de Vitta y la racha real del usuario. Va como hijo del Box
+ * de la pantalla para que el scrim solo cubra esa pantalla.
+ */
+@Composable
+internal fun RachaSumadaDialog(aviso: RachaSumadaUi?, onDismiss: () -> Unit) {
+    // Conserva el último valor mientras dura la animación de salida.
+    var last by remember { mutableStateOf<RachaSumadaUi?>(null) }
+    LaunchedEffect(aviso) { if (aviso != null) last = aviso }
+    val current = aviso ?: last ?: return
+    VittaStreakDialog(
+        visible = aviso != null,
+        days = current.dias,
+        onDismiss = onDismiss,
+        mascot = { VittaMascot(state = MascotState.Strong, size = MascotSize.Medium) }
+    )
+}
+
+/**
+ * Celebración de una medalla nueva ("Logro desbloqueado" del mockup), con el
+ * [VittaRewardSheet] existente, la insignia SVG del logro y su bono real.
+ */
+@Composable
+internal fun LogroDesbloqueadoSheet(logro: LogroDto?, onDismiss: () -> Unit, onVerLogros: () -> Unit) {
+    // Conserva el último logro mientras dura la animación de salida.
+    var last by remember { mutableStateOf<LogroDto?>(null) }
+    LaunchedEffect(logro) { if (logro != null) last = logro }
+    val current = logro ?: last ?: return
+
+    VittaRewardSheet(
+        visible = logro != null,
+        area = "LOGRO DESBLOQUEADO",
+        title = current.nombre,
+        description = current.descripcion.ifBlank { current.condicion },
+        onDismiss = onDismiss,
+        mascot = {
+            VittaInsigniaBadge(
+                insignia = insigniaPara(current.icono.orEmpty()),
+                unlocked = true,
+                size = 96.dp
+            )
+        }
+    ) {
+        if (current.puntos_bonus > 0) {
+            Row(
+                Modifier
+                    .background(Mk.AmberTile, VittaShapes.pill)
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("+${current.puntos_bonus}", style = caprasimo(15f, 1.2f), color = Mk.AmberInk)
+                Spacer(Modifier.width(7.dp))
+                Text("VitaPuntos", style = figtree(600, 13f), color = Mk.AmberDeep)
+            }
+        }
+        Spacer(Modifier.height(VittaSpacing.Sm))
+        VittaPrimaryButton(text = "Ver mis logros", onClick = onVerLogros, modifier = Modifier.fillMaxWidth())
+    }
+}
+
+/**
+ * "Racha terminada" del mockup (`perdida`): fondo #EFE6D6, radio 30, Vitta de
+ * la tarde, récord histórico y "Empezar una racha nueva hoy". Datos reales:
+ * la racha cortada, el día en que cerró y el récord salen del backend.
+ */
+@Composable
+private fun RachaTerminadaCard(racha: RachaPerdidaUi, onEmpezar: () -> Unit) {
+    val ayer = LocalDate.now(java.time.ZoneId.systemDefault()).minusDays(1)
+    val cuando = if (racha.cerroEl == ayer) "ayer"
+    else "el " + racha.cerroEl.format(DateTimeFormatter.ofPattern("d 'de' MMMM", Locale("es", "ES")))
+    val dias = if (racha.dias == 1) "1 día" else "${racha.dias} días"
+    val gris = remember {
+        androidx.compose.ui.graphics.ColorFilter.colorMatrix(
+            androidx.compose.ui.graphics.ColorMatrix().apply { setToSaturation(0.25f) }
+        )
+    }
+
+    Column(
+        Modifier
+            .padding(top = 4.dp)
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(30.dp))
+            .background(Mk.Sand)
+            .padding(20.dp)
+    ) {
+        Row(verticalAlignment = Alignment.Bottom) {
+            Column(Modifier.weight(1f).padding(bottom = 4.dp)) {
+                Text("RACHA TERMINADA", style = figtree(600, 11f, 1f, 0.09f), color = Mk.SandText)
+                Text(
+                    "Tu racha de $dias cerró $cuando",
+                    style = caprasimo(22f, 1.15f, -0.015f),
+                    color = Mk.Ink,
+                    modifier = Modifier.padding(top = 9.dp).semantics { heading() }
+                )
+                Text(
+                    "Tus logros y tus VitaPuntos siguen intactos. Hoy puedes empezar una nueva.",
+                    style = figtree(500, 13.5f, 1.45f),
+                    color = Mk.Body,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+            }
+            Spacer(Modifier.width(10.dp))
+            // <img vitta width:98px;margin:0 -2px -12px 0> (misma ilustración que "Dormir · esta noche").
+            VittaMascot(
+                state = MascotState.Evening,
+                size = MascotSize.Medium,
+                modifier = Modifier.offset(x = 2.dp, y = 12.dp)
+            )
+        }
+
+        Row(
+            Modifier
+                .padding(top = 14.dp)
+                .fillMaxWidth()
+                .background(Mk.Screen, RoundedCornerShape(20.dp))
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            coil.compose.AsyncImage(
+                model = coil.request.ImageRequest.Builder(androidx.compose.ui.platform.LocalContext.current)
+                    .data("file:///android_asset/" + VittaIconAssets.streakFlame)
+                    .build(),
+                contentDescription = null,
+                modifier = Modifier.size(28.dp),
+                alpha = 0.45f,
+                colorFilter = gris
+            )
+            Spacer(Modifier.width(10.dp))
+            Column(Modifier.weight(1f)) {
+                Text("Tu récord histórico", style = figtree(600, 13f), color = Mk.Body)
+                Text(
+                    "${racha.record} ${if (racha.record == 1) "día seguido" else "días seguidos"}" +
+                        (racha.recordMes?.let { ", en $it" } ?: ""),
+                    style = figtree(500, 12.5f),
+                    color = Mk.Muted,
+                    modifier = Modifier.padding(top = 2.dp)
+                )
+            }
+        }
+
+        Box(
+            Modifier
+                .padding(top = 12.dp)
+                .fillMaxWidth()
+                .heightIn(min = 54.dp)
+                .clip(VittaShapes.pill)
+                .background(Mk.OliveDeep)
+                .clickable(role = androidx.compose.ui.semantics.Role.Button, onClick = onEmpezar),
+            contentAlignment = Alignment.Center
+        ) {
+            Text("Empezar una racha nueva hoy", style = caprasimo(16f, 1.2f), color = Mk.NightText)
         }
     }
 }
 
 @Composable
-private fun HeaderBlock(userName: String, level: Int) {
+private fun HeaderBlock(userName: String, level: Int?) {
     val today = remember {
         val locale = Locale("es", "ES")
         val date = LocalDate.now()
@@ -209,7 +521,7 @@ private fun HeaderBlock(userName: String, level: Int) {
                 modifier = Modifier.semantics { heading() }
             )
         }
-        LevelPill(level = level)
+        if (level != null) LevelPill(level = level)
     }
 }
 
@@ -217,11 +529,11 @@ private fun HeaderBlock(userName: String, level: Int) {
 private fun LevelPill(level: Int) {
     Row(
         modifier = Modifier
-            .background(VittaColorRoles.primary, VittaShapes.pill)
+            .background(VittaColorRoles.primaryStrong, VittaShapes.pill)
             .padding(horizontal = VittaSpacing.Md, vertical = VittaSpacing.Sm),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(Modifier.size(8.dp).background(VittaColors.OrangeAccent, CircleShape))
+        Box(Modifier.size(8.dp).background(VittaColors.GoldAccent, CircleShape))
         Spacer(Modifier.width(VittaSpacing.Xs))
         Text("Nivel $level", style = VittaTextStyles.caption, color = VittaColorRoles.onPrimary)
     }
@@ -232,9 +544,9 @@ private fun HeroCard(
     doneCount: Int,
     totalCount: Int,
     racha: Int,
-    points: Int,
-    levelName: String,
-    pointsToNext: Int,
+    points: Int?,
+    levelName: String?,
+    pointsToNext: Int?,
     levelProgress: Float
 ) {
     val sinHabitosHoy = totalCount == 0
@@ -268,7 +580,7 @@ private fun HeroCard(
                             else -> "VAS BIEN"
                         },
                         style = VittaTextStyles.label,
-                        color = VittaColors.OrangeAccent
+                        color = VittaColorRoles.primaryPressed
                     )
                     Spacer(Modifier.height(VittaSpacing.Xs))
                     Text(
@@ -312,14 +624,16 @@ private fun HeroCard(
                 )
                 HeroStat(
                     icon = { StatIcon(R.drawable.ic8_trophy) },
-                    value = formatPoints(points),
+                    value = points?.let(::formatPoints) ?: "—",
                     label = "VitaPuntos",
                     modifier = Modifier.weight(1f)
                 )
             }
 
-            Spacer(Modifier.height(VittaSpacing.Md))
-            LevelProgress(levelName = levelName, pointsToNext = pointsToNext, progress = levelProgress)
+            if (levelName != null) {
+                Spacer(Modifier.height(VittaSpacing.Md))
+                LevelProgress(levelName = levelName, pointsToNext = pointsToNext, progress = levelProgress)
+            }
         }
     }
 }
@@ -353,34 +667,45 @@ private fun StreakFlame(size: androidx.compose.ui.unit.Dp) {
 }
 
 @Composable
-private fun LevelProgress(levelName: String, pointsToNext: Int, progress: Float) {
+private fun LevelProgress(levelName: String, pointsToNext: Int?, progress: Float) {
     Column {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(levelName, style = VittaTextStyles.body, color = VittaColorRoles.textSecondary)
+            Text("Nivel: $levelName", style = VittaTextStyles.body, color = VittaColorRoles.textSecondary)
             Text(
-                "$pointsToNext para el siguiente nivel",
+                if (pointsToNext == null) "Nivel máximo" else "Faltan ${formatPoints(pointsToNext)} pts",
                 style = VittaTextStyles.bodySmall,
                 color = VittaColorRoles.textMuted
             )
         }
         Spacer(Modifier.height(VittaSpacing.Xs))
-        ProgressBar(progress = progress, modifier = Modifier.fillMaxWidth())
+        // Amarillo de marca: los puntos y el nivel son recompensas.
+        ProgressBar(
+            progress = progress,
+            modifier = Modifier.fillMaxWidth(),
+            fill = VittaColors.GoldAccent,
+            track = VittaColors.SurfaceVariant
+        )
     }
 }
 
 @Composable
-private fun ProgressBar(progress: Float, modifier: Modifier = Modifier) {
+private fun ProgressBar(
+    progress: Float,
+    modifier: Modifier = Modifier,
+    fill: androidx.compose.ui.graphics.Color = VittaColors.GreenPrimary,
+    track: androidx.compose.ui.graphics.Color = VittaColors.GreenTrack
+) {
     Box(
         modifier
             .height(8.dp)
             .clip(CircleShape)
-            .background(VittaColors.SurfaceVariant)
+            .background(track)
     ) {
         Box(
             Modifier
                 .fillMaxHeight()
                 .fillMaxWidth(progress.coerceIn(0f, 1f))
-                .background(VittaColors.OrangeAccent)
+                .background(fill, CircleShape)
         )
     }
 }
@@ -440,11 +765,17 @@ private fun EmptyHabits(onAddHabit: () -> Unit) {
 }
 
 @Composable
-private fun HabitDashboardCard(card: HabitCardUiState, viewModel: ChecklistViewModel, onEdit: () -> Unit) {
+internal fun HabitDashboardCard(
+    card: HabitCardUiState,
+    viewModel: ChecklistViewModel,
+    onEdit: () -> Unit,
+    onUndoRequest: () -> Unit,
+    onNoteRequest: () -> Unit
+) {
     val subtitle = when {
         card.doneToday -> "Registrado hoy"
         card.esAgua && card.metaTarget != null -> "Vas ${card.pendingValue} de ${card.metaTarget} vasos"
-        card.metaTarget != null -> "${card.pendingValue} de ${card.metaTarget} ${card.metaUnidad}"
+        card.metaTarget != null -> "Vas ${card.pendingValue} de ${card.metaTarget} ${card.metaUnidad}"
         else -> card.habit.meta
     }
 
@@ -470,7 +801,12 @@ private fun HabitDashboardCard(card: HabitCardUiState, viewModel: ChecklistViewM
             )
             Spacer(Modifier.width(VittaSpacing.Md))
             // Tocar el nombre abre la edición del hábito.
-            Column(Modifier.weight(1f).clickable(onClick = onEdit)) {
+            Column(
+                Modifier
+                    .weight(1f)
+                    .clip(VittaShapes.small)
+                    .clickable(onClickLabel = "Editar hábito", onClick = onEdit)
+            ) {
                 Text(card.habit.nombre, style = VittaTextStyles.title, color = VittaColorRoles.textPrimary)
                 Spacer(Modifier.height(VittaSpacing.Xxs))
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -487,7 +823,7 @@ private fun HabitDashboardCard(card: HabitCardUiState, viewModel: ChecklistViewM
                 }
             }
             Spacer(Modifier.width(VittaSpacing.Sm))
-            TrailingAction(card = card, viewModel = viewModel)
+            TrailingAction(card = card, viewModel = viewModel, onUndoRequest = onUndoRequest)
         }
 
         if (!card.doneToday && card.metaTarget != null) {
@@ -506,6 +842,12 @@ private fun HabitDashboardCard(card: HabitCardUiState, viewModel: ChecklistViewM
             }
         }
 
+        // La nota aparece cuando ya hiciste algo hoy (o ya tienes una), para no recargar la tarjeta.
+        if (card.doneToday || card.savedValue > 0 || card.nota != null) {
+            Spacer(Modifier.height(VittaSpacing.Sm))
+            HabitNoteRow(nota = card.nota, saving = card.isSavingNote, onClick = onNoteRequest)
+        }
+
         if (card.errorMessage != null) {
             Spacer(Modifier.height(VittaSpacing.Sm))
             Text(card.errorMessage, style = VittaTextStyles.bodySmall, color = VittaColors.Error)
@@ -513,31 +855,69 @@ private fun HabitDashboardCard(card: HabitCardUiState, viewModel: ChecklistViewM
     }
 }
 
+/** "Agregar nota" o la nota de hoy (tocarla la edita). */
 @Composable
-private fun TrailingAction(card: HabitCardUiState, viewModel: ChecklistViewModel) {
-    when {
-        card.doneToday -> {
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .background(VittaColorRoles.primary, CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    Icons.Filled.Check,
-                    contentDescription = "Completado",
-                    tint = VittaColorRoles.onPrimary,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
+internal fun HabitNoteRow(nota: String?, saving: Boolean, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(VittaShapes.small)
+            .then(
+                if (nota != null) Modifier.background(VittaColorRoles.background, VittaShapes.small) else Modifier
+            )
+            .clickable(enabled = !saving, onClickLabel = if (nota == null) "Agregar nota" else "Editar nota", onClick = onClick)
+            .heightIn(min = 40.dp)
+            .padding(horizontal = VittaSpacing.Sm, vertical = VittaSpacing.Xs),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            if (nota == null) Icons.Outlined.EditNote else Icons.AutoMirrored.Outlined.StickyNote2,
+            contentDescription = null,
+            tint = VittaColorRoles.primaryPressed,
+            modifier = Modifier.size(18.dp)
+        )
+        Spacer(Modifier.width(VittaSpacing.Xs))
+        when {
+            saving -> Text("Guardando nota…", style = VittaTextStyles.bodySmall, color = VittaColorRoles.textMuted)
+            nota == null -> Text("Agregar nota del día", style = VittaTextStyles.bodySmall, color = VittaColorRoles.primaryPressed)
+            else -> Text(
+                nota,
+                style = VittaTextStyles.bodySmall.copy(fontStyle = androidx.compose.ui.text.font.FontStyle.Italic),
+                color = VittaColorRoles.textSecondary,
+                maxLines = 2,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+            )
         }
+    }
+}
 
+@Composable
+private fun TrailingAction(card: HabitCardUiState, viewModel: ChecklistViewModel, onUndoRequest: () -> Unit) {
+    when {
         card.isSubmitting -> {
             CircularProgressIndicator(
                 modifier = Modifier.size(24.dp),
                 strokeWidth = 2.dp,
                 color = VittaColorRoles.primary
             )
+        }
+
+        card.doneToday -> {
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .background(VittaColorRoles.primaryStrong)
+                    .clickable(onClickLabel = "Desmarcar", onClick = onUndoRequest),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Filled.Check,
+                    contentDescription = "Completado. Toca para desmarcar",
+                    tint = VittaColorRoles.onPrimary,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
         }
 
         card.esAgua && card.metaTarget != null -> {
@@ -557,7 +937,7 @@ private fun TrailingAction(card: HabitCardUiState, viewModel: ChecklistViewModel
         }
 
         else -> {
-            OutlinedPill(text = "Listo", onClick = { viewModel.onToggleBoolean(card.habit.id) })
+            OutlinedPill(text = "Listo", onClick = { viewModel.onComplete(card.habit.id) })
         }
     }
 }
@@ -572,7 +952,7 @@ private fun StreakChip(days: Int) {
     ) {
         StreakFlame(14.dp)
         Spacer(Modifier.width(VittaSpacing.Xxs))
-        Text("$days", style = VittaTextStyles.caption, color = VittaColors.OrangeAccent)
+        Text("$days", style = VittaTextStyles.caption, color = VittaColorRoles.textPrimary)
     }
 }
 
@@ -592,7 +972,7 @@ private fun OutlinedPill(text: String, onClick: () -> Unit) {
 }
 
 /** 1240 -> "1.240" (separador de miles con punto, como en el prototipo). */
-private fun formatPoints(points: Int): String {
+internal fun formatPoints(points: Int): String {
     val symbols = DecimalFormatSymbols(Locale("es", "ES")).apply { groupingSeparator = '.' }
     return DecimalFormat("#,###", symbols).format(points)
 }

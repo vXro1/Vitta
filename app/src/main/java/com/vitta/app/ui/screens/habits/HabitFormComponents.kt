@@ -211,7 +211,8 @@ fun HabitIconTile(
             painter = painterResource(icon.drawable),
             contentDescription = null,
             modifier = Modifier.fillMaxSize(0.58f),
-            contentScale = ContentScale.Fit
+            contentScale = ContentScale.Fit,
+            colorFilter = com.vitta.app.ui.theme.VittaIconTint.habit
         )
         if (selected) {
             Box(
@@ -461,7 +462,7 @@ fun VittaFilterChip(label: String, selected: Boolean, onClick: () -> Unit) {
         colors = FilterChipDefaults.filterChipColors(
             containerColor = VittaColorRoles.surface,
             labelColor = VittaColorRoles.textSecondary,
-            selectedContainerColor = VittaColorRoles.primary,
+            selectedContainerColor = VittaColorRoles.primaryStrong,
             selectedLabelColor = VittaColorRoles.onPrimary
         ),
         border = FilterChipDefaults.filterChipBorder(
@@ -702,8 +703,8 @@ fun HabitFrequencySelector(
                                 .fillMaxWidth()
                                 .aspectRatio(1f)
                                 .clip(CircleShape)
-                                .background(if (selected) VittaColorRoles.primary else VittaColorRoles.surface)
-                                .border(1.dp, if (selected) VittaColorRoles.primary else VittaColorRoles.border, CircleShape)
+                                .background(if (selected) VittaColorRoles.primaryStrong else VittaColorRoles.surface)
+                                .border(1.dp, if (selected) VittaColorRoles.primaryStrong else VittaColorRoles.border, CircleShape)
                                 .toggleable(value = selected, role = Role.Checkbox, onValueChange = { onToggleDay(code) })
                                 .semantics {
                                     contentDescription = name

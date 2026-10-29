@@ -1,44 +1,33 @@
 package com.vitta.app.ui.screens.home
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.TrendingUp
-import androidx.compose.material.icons.automirrored.outlined.TrendingUp
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.outlined.Home
-import androidx.compose.material.icons.outlined.Person
-import androidx.compose.material3.Icon
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.vitta.app.ui.components.navigation.VittaBottomNavBar
+import com.vitta.app.ui.components.navigation.VittaDestination
+import com.vitta.app.ui.screens.achievements.AchievementsScreen
 import com.vitta.app.ui.screens.profile.ProfileScreen
+import com.vitta.app.ui.screens.profile.ProfileViewModel
 import com.vitta.app.ui.screens.progress.ProgressScreen
 import com.vitta.app.ui.theme.VittaColorRoles
-import com.vitta.app.ui.theme.VittaTextStyles
-
-private enum class MainTab(val label: String, val selectedIcon: ImageVector, val icon: ImageVector) {
-    Home("Inicio", Icons.Filled.Home, Icons.Outlined.Home),
-    Progress("Progreso", Icons.AutoMirrored.Filled.TrendingUp, Icons.AutoMirrored.Outlined.TrendingUp),
-    Me("Yo", Icons.Filled.Person, Icons.Outlined.Person)
-}
 
 /**
- * Contenedor principal tras iniciar sesión: barra inferior con "Inicio",
- * "Progreso" y "Yo". Solo existen las pestañas con pantallas reales.
+ * Contenedor tras iniciar sesión: barra inferior con Inicio, Hoy, Progreso,
+ * Logros y Perfil. Inicio y Hoy comparten el mismo [ChecklistViewModel] (lo
+ * que se registra en una se ve en la otra) y Logros/Perfil comparten
+ * [ProfileViewModel].
  *
- * @param refreshRequests cambia de valor cuando otra pantalla (p. ej. editar
- *   hábito) pide recargar la lista al volver.
+ * @param refreshRequests cambia cuando otra pantalla (p. ej. editar hábito)
+ *   pide recargar la lista al volver.
  */
 @Composable
 fun MainScreen(
@@ -47,61 +36,93 @@ fun MainScreen(
     refreshRequests: Int,
     onAddHabit: () -> Unit,
     onEditHabit: (Int) -> Unit,
+    onOpenHelp: () -> Unit,
     onLogout: () -> Unit
 ) {
-    var tab by rememberSaveable { mutableStateOf(MainTab.Home) }
+    var tab by rememberSaveable { mutableStateOf(VittaDestination.Home) }
     val checklistViewModel: ChecklistViewModel = viewModel()
+    val profileViewModel: ProfileViewModel = viewModel()
     val checklistState by checklistViewModel.uiState.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(refreshRequests) {
         if (refreshRequests > 0) checklistViewModel.load()
     }
 
+    // Se consume al terminar de mostrarse: consumirlo antes cambiaría la clave y cancelaría el snackbar.
+    LaunchedEffect(checklistState.message) {
+        val message = checklistState.message ?: return@LaunchedEffect
+        snackbarHostState.currentSnackbarData?.dismiss()
+        snackbarHostState.showSnackbar(message)
+        checklistViewModel.consumeMessage()
+    }
+
+    // Atrás desde otra pestaña vuelve a Inicio en vez de cerrar la app.
+    BackHandler(enabled = tab != VittaDestination.Home) { tab = VittaDestination.Home }
+
+    val verLogros = { tab = VittaDestination.Achievements }
+
     Scaffold(
         containerColor = VittaColorRoles.background,
-        bottomBar = {
-            NavigationBar(containerColor = VittaColorRoles.surface, tonalElevation = 0.dp) {
-                MainTab.entries.forEach { item ->
-                    val selected = tab == item
-                    NavigationBarItem(
-                        selected = selected,
-                        onClick = { tab = item },
-                        icon = { Icon(if (selected) item.selectedIcon else item.icon, contentDescription = null) },
-                        label = { Text(item.label, style = VittaTextStyles.bodySmall) },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = VittaColorRoles.primaryPressed,
-                            selectedTextColor = VittaColorRoles.primaryPressed,
-                            indicatorColor = VittaColorRoles.surfaceTint,
-                            unselectedIconColor = VittaColorRoles.textMuted,
-                            unselectedTextColor = VittaColorRoles.textMuted
-                        )
-                    )
-                }
+        snackbarHost = {
+            SnackbarHost(snackbarHostState) { data ->
+                Snackbar(
+                    snackbarData = data,
+                    containerColor = VittaColorRoles.toastSurface,
+                    contentColor = VittaColorRoles.toastOnSurface
+                )
             }
+        },
+        bottomBar = {
+            VittaBottomNavBar(
+                selected = tab,
+                onSelect = { destination ->
+                    // Entrar a Inicio/Hoy desde otra pestaña (o volver a tocarla) refresca los hábitos.
+                    val checklistTabs = setOf(VittaDestination.Home, VittaDestination.Today)
+                    if (destination in checklistTabs && (tab !in checklistTabs || tab == destination)) {
+                        checklistViewModel.load()
+                    }
+                    tab = destination
+                }
+            )
         }
     ) { padding ->
         val modifier = Modifier
             .fillMaxSize()
             .padding(padding)
         when (tab) {
-            MainTab.Home -> Box(modifier) {
+            VittaDestination.Home -> Box(modifier) {
                 ChecklistScreen(
                     userName = userName,
                     viewModel = checklistViewModel,
                     onAddHabit = onAddHabit,
-                    onEditHabit = onEditHabit
+                    onEditHabit = onEditHabit,
+                    onVerLogros = verLogros
                 )
             }
-            MainTab.Progress -> Box(modifier) {
+            VittaDestination.Today -> Box(modifier) {
+                TodayScreen(
+                    viewModel = checklistViewModel,
+                    onAddHabit = onAddHabit,
+                    onEditHabit = onEditHabit,
+                    onVerLogros = verLogros
+                )
+            }
+            VittaDestination.Progress -> Box(modifier) {
                 ProgressScreen()
             }
-            MainTab.Me -> Box(modifier) {
+            VittaDestination.Achievements -> Box(modifier) {
+                AchievementsScreen(viewModel = profileViewModel)
+            }
+            VittaDestination.Profile -> Box(modifier) {
                 ProfileScreen(
                     userName = userName,
                     userEmail = userEmail,
-                    activeHabits = checklistState.cards.size,
-                    bestStreak = checklistState.bestStreakEver,
-                    onLogout = onLogout
+                    onAddHabit = onAddHabit,
+                    onOpenHelp = onOpenHelp,
+                    onOpenAchievements = verLogros,
+                    onLogout = onLogout,
+                    viewModel = profileViewModel
                 )
             }
         }

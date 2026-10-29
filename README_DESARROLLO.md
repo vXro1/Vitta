@@ -9,19 +9,19 @@ README específicos (enlazados en cada sección).
 
 ## 1. Qué cambió en esta versión
 
-| Área | Cambio |
-|---|---|
+| Área          | Cambio                                                                                                                                                                   |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Autenticación | Login y Registro rediseñados: textos siempre legibles, burbujas animadas (respetan "quitar animaciones"), botón de regreso, lista de requisitos de contraseña en vivo |
-| Tipografía | **Nunito en toda la app** (reemplaza a Caprasimo + Figtree) |
-| Paleta | Verde esmeralda, naranja, ámbar y fondos blanco-menta; se eliminó el beige grisáceo. Contrastes verificados (WCAG ≥ 4.5:1) |
-| Tema | Siempre claro (`VittaTheme(useDarkTheme = false)`): el modo oscuro del sistema producía texto claro sobre fondo claro |
-| Iconos | 166 iconos de **Icons8** (estilo "Color") con catálogo, categorías y búsqueda |
-| Crear hábito | Flujo en 5 pasos: nombre → icono → meta (cantidad + unidad) → frecuencia → recordatorio (selector de hora Material 3) |
-| Editar hábito | Pantalla nueva, usa `PUT /api/habits/:id` (ya existía en el backend) |
-| Inicio | Dashboard con progreso del día, rachas, hábitos de hoy y de otros días |
-| Yo | Perfil, estadísticas, créditos de Icons8, cerrar sesión con confirmación |
-| Navegación | Barra inferior Inicio / Yo; se eliminaron rutas registradas dos veces |
-| Validación | "Elige al menos un día" (antes el backend respondía 400 con la frecuencia vacía) |
+| Tipografía    | **Nunito en toda la app** (reemplaza a Caprasimo + Figtree)                                                                                                        |
+| Paleta         | Paleta de marca: verde oliva, amarillo, verde oscuro, terracota y marfil (`Color.kt`). Texto tenue oscurecido a `#66705F` para que se lea (4.7:1)              |
+| Tema           | Siempre claro (`VittaTheme(useDarkTheme = false)`): el modo oscuro del sistema producía texto claro sobre fondo claro                                                 |
+| Iconos         | 166 iconos de**Icons8** (estilo "Color") con catálogo, categorías y búsqueda                                                                                    |
+| Crear hábito  | Flujo en 5 pasos: nombre → icono → meta (cantidad + unidad) → frecuencia → recordatorio (selector de hora Material 3)                                                |
+| Editar hábito | Pantalla nueva, usa`PUT /api/habits/:id` (ya existía en el backend)                                                                                                   |
+| Inicio         | Dashboard con progreso del día, rachas, hábitos de hoy y de otros días                                                                                                |
+| Yo             | Perfil, estadísticas, créditos de Icons8, cerrar sesión con confirmación                                                                                             |
+| Navegación    | Barra inferior Inicio / Yo; se eliminaron rutas registradas dos veces                                                                                                    |
+| Validación    | "Elige al menos un día" (antes el backend respondía 400 con la frecuencia vacía)                                                                                      |
 
 ---
 
@@ -89,17 +89,17 @@ Creados en la **base de datos local** de desarrollo (`vitta-db`) el
 2026-10-04. No existen en otros entornos: si tu BD está vacía, créalos con
 el comando de abajo.
 
-| Nombre | Correo | Contraseña | Estado | Úsalo para probar |
-|---|---|---|---|---|
-| Prueba Claude | `prueba.claude@vitta.test` | `Prueba123!` | Sin hábitos | Primer uso: pantalla "Empecemos por uno" → selección de hábitos → configuración |
-| Prueba Dos | `prueba2.claude@vitta.test` | `Prueba1234` | 2 hábitos | Inicio con datos, edición, sección Yo, cerrar sesión |
+| Nombre        | Correo                        | Contraseña    | Estado       | Úsalo para probar                                                                   |
+| ------------- | ----------------------------- | -------------- | ------------ | ------------------------------------------------------------------------------------ |
+| Prueba Claude | `prueba.claude@vitta.test`  | `Prueba123!` | Sin hábitos | Primer uso: pantalla "Empecemos por uno" → selección de hábitos → configuración |
+| Prueba Dos    | `prueba2.claude@vitta.test` | `Prueba1234` | 2 hábitos   | Inicio con datos, edición, sección Yo, cerrar sesión                              |
 
 Hábitos de **Prueba Dos**:
 
-| id | Nombre | meta | frecuencia | Nota |
-|---|---|---|---|---|
-| 1 | Estirar | `10 minutos al día` | `Diaria` | Creado con el formato anterior de unidad (con "al día"); sirve para comprobar compatibilidad |
-| 2 | Meditar | `10 veces` | `L,X,D` | Solo aparece en "Hábitos de hoy" lunes, miércoles y domingo; los demás días va en "Otros días" |
+| id | Nombre  | meta                   | frecuencia | Nota                                                                                                |
+| -- | ------- | ---------------------- | ---------- | --------------------------------------------------------------------------------------------------- |
+| 1  | Estirar | `10 minutos al día` | `Diaria` | Creado con el formato anterior de unidad (con "al día"); sirve para comprobar compatibilidad       |
+| 2  | Meditar | `10 veces`           | `L,X,D`  | Solo aparece en "Hábitos de hoy" lunes, miércoles y domingo; los demás días va en "Otros días" |
 
 > Son credenciales **solo de desarrollo**. No reutilizar en ningún entorno
 > compartido ni en producción.
@@ -155,15 +155,15 @@ app/src/main/java/com/vitta/app/
 
 ### Archivos nuevos clave
 
-| Archivo | Qué contiene |
-|---|---|
-| `ui/components/auth/VittaAuthComponents.kt` | Esqueleto de Login/Registro, burbujas animadas, banner de error, lista de requisitos |
-| `ui/components/icons/HabitIconCatalog.kt` | `HabitIcon`, `HabitIcons.all`, `featured`, `search()`, `forHabitName()` |
-| `ui/screens/habits/HabitFormComponents.kt` | Bloques del formulario: secciones numeradas, selector de icono y catálogo, meta, frecuencia, campo y diálogo de hora |
-| `ui/screens/habits/HabitTextFormat.kt` | Cómo se arma y se lee `meta` y `frecuencia` (único lugar con ese formato) |
-| `ui/screens/habits/EditHabitScreen.kt` / `EditHabitViewModel.kt` | Edición de hábito |
-| `ui/screens/home/MainScreen.kt` | Barra inferior Inicio / Yo |
-| `ui/screens/profile/ProfileScreen.kt` | Sección Yo |
+| Archivo                                                              | Qué contiene                                                                                                          |
+| -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `ui/components/auth/VittaAuthComponents.kt`                        | Esqueleto de Login/Registro, burbujas animadas, banner de error, lista de requisitos                                   |
+| `ui/components/icons/HabitIconCatalog.kt`                          | `HabitIcon`, `HabitIcons.all`, `featured`, `search()`, `forHabitName()`                                      |
+| `ui/screens/habits/HabitFormComponents.kt`                         | Bloques del formulario: secciones numeradas, selector de icono y catálogo, meta, frecuencia, campo y diálogo de hora |
+| `ui/screens/habits/HabitTextFormat.kt`                             | Cómo se arma y se lee`meta` y `frecuencia` (único lugar con ese formato)                                         |
+| `ui/screens/habits/EditHabitScreen.kt` / `EditHabitViewModel.kt` | Edición de hábito                                                                                                    |
+| `ui/screens/home/MainScreen.kt`                                    | Barra inferior Inicio / Yo                                                                                             |
+| `ui/screens/profile/ProfileScreen.kt`                              | Sección Yo                                                                                                            |
 
 ---
 
@@ -208,23 +208,27 @@ Reglas:
 El backend guarda los hábitos en la tabla `habitos` con solo estos campos:
 `nombre`, `meta` (TEXT), `frecuencia` (TEXT) y `tipo`.
 
-| Campo | Formato | Ejemplos |
-|---|---|---|
-| `meta` | `"<cantidad> <unidad>"` | `8 vasos`, `30 minutos`, `2 kilómetros` |
-| `frecuencia` | `Diaria` o días separados por coma, en orden L→D | `Diaria`, `L,X,V` |
+| Campo          | Formato                                              | Ejemplos                                       |
+| -------------- | ---------------------------------------------------- | ---------------------------------------------- |
+| `meta`       | `"<cantidad> <unidad>"`                            | `8 vasos`, `30 minutos`, `2 kilómetros` |
+| `frecuencia` | `Diaria` o días separados por coma, en orden L→D | `Diaria`, `L,X,V`                          |
 
 Siempre usa `HabitTextFormat` para leerlos y escribirlos. Las unidades
 antiguas con "al día" (p. ej. `10 minutos al día`) se siguen leyendo bien.
 Al editar, si el usuario no toca la frecuencia, se reenvía la original sin
 cambios.
 
-### Lo que el backend NO guarda (limitaciones)
+### Campos nuevos del backend (rama main, commit 58dbf0a)
 
-| Dato | Comportamiento actual en la app |
-|---|---|
-| Hora del recordatorio | Se elige con el selector, pero **no se guarda**; la pantalla lo avisa. Tampoco existen notificaciones |
-| Icono elegido | **No se guarda**; se deduce del nombre (`HabitIcons.forHabitName`). Si el usuario elige otro, la app avisa cuál verá |
-| Perfil | No hay `GET/PUT /users/me`; Yo muestra nombre y correo guardados al iniciar sesión |
+| Dato                  | Comportamiento actual en la app                                                                 |
+| --------------------- | ----------------------------------------------------------------------------------------------- |
+| Hora del recordatorio | Se guarda en `/api/recordatorios` y ordena la pestaña Hoy. Aún no hay notificaciones           |
+| Icono y categoría     | Se guardan en `icono` / `categoria`; la app muestra el del backend en todas las pantallas     |
+| Meta numérica         | `meta_valor` + `unidad`: permiten el avance parcial (`PATCH /api/habits/:id/progreso`)       |
+| Notas del día         | Campo `notas` del registro (columna `reflexion`)                                               |
+| Perfil                | `GET /api/users/me` (nombre, alta, hábitos, medallas, puntos). Editar perfil: pendiente en la app |
+
+Detalle de la integración: **README_INTEGRACION.md**.
 
 Tabla completa (problema → causa → endpoint → solución → impacto):
 **README_RECURSOS.md → "Limitaciones conocidas (backend)"**.
@@ -330,24 +334,22 @@ Con el backend corriendo y los usuarios de la sección 3:
 
 ## 11. Pendientes conocidos
 
-- Backend: columnas `hora_recordatorio` e `icono` (y sus campos en los DTO de Android).
 - Notificaciones locales para los recordatorios (WorkManager/AlarmManager).
-- Endpoint de perfil (`/users/me`).
+- Pantalla para editar perfil y contraseña (los endpoints ya existen).
 - Si se quieren exigir los requisitos de contraseña, validarlos en
   `RegisterViewModel` **y** en `validatePassword` del backend.
-- La app siempre arranca en la introducción, aunque haya una sesión
-  guardada (no hay inicio de sesión automático).
-- Las pestañas Progreso, Logros y Tienda del maquetado aún no existen.
+- La Tienda del maquetado aún no existe (el backend no la tiene).
 
 ---
 
 ## Documentación relacionada
 
-| Archivo | Tema |
-|---|---|
-| README.md | Visión general del proyecto |
-| README_INSTALACION.md | Requisitos, JDK, SDK, emulador |
-| README_ESTILOS.md | Tipografía (Nunito), espaciado, formas |
-| README_COLORES.md | Paleta y contrastes |
-| README_COMPONENTES.md | Componentes del sistema de diseño |
-| README_RECURSOS.md | Iconos Icons8 (licencia y atribución), mascota, fuentes, limitaciones del backend |
+| Archivo               | Tema                                                                               |
+| --------------------- | ---------------------------------------------------------------------------------- |
+| README.md             | Visión general del proyecto                                                       |
+| README_INSTALACION.md | Requisitos, JDK, SDK, emulador                                                     |
+| README_ESTILOS.md     | Tipografía (Nunito), espaciado, formas                                            |
+| README_COLORES.md     | Paleta y contrastes                                                                |
+| README_COMPONENTES.md | Componentes del sistema de diseño                                                 |
+| README_RECURSOS.md    | Iconos Icons8 (licencia y atribución), mascota, fuentes, limitaciones del backend |
+| README_INTEGRACION.md | Integración de Valentina + Verónica con el backend nuevo y cómo probarla          |

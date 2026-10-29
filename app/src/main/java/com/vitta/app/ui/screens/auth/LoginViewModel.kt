@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.vitta.app.data.repository.AuthRepository
 import com.vitta.app.data.repository.AuthResult
+import com.vitta.app.data.repository.DemoRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -15,10 +16,28 @@ data class LoginUiState(
     val correoError: String? = null,
     val passwordError: String? = null,
     val generalError: String? = null,
-    val isLoading: Boolean = false
+    val isLoading: Boolean = false,
+    val isDemoLoading: Boolean = false
 )
 
 class LoginViewModel(private val repository: AuthRepository) : ViewModel() {
+
+    private val demo = DemoRepository(repository)
+
+    /** Entra con la cuenta demo (la crea y le carga datos de ejemplo la primera vez). */
+    fun enterDemo(onSuccess: () -> Unit) {
+        if (_uiState.value.isLoading || _uiState.value.isDemoLoading) return
+        _uiState.value = _uiState.value.copy(isDemoLoading = true, generalError = null)
+        viewModelScope.launch {
+            val result = demo.enter()
+            _uiState.value = _uiState.value.copy(isDemoLoading = false)
+            when (result) {
+                is AuthResult.Success -> onSuccess()
+                is AuthResult.OtherError -> _uiState.value = _uiState.value.copy(generalError = result.message)
+                else -> _uiState.value = _uiState.value.copy(generalError = "No se pudo abrir la demo. Intenta de nuevo.")
+            }
+        }
+    }
 
     private val _uiState = MutableStateFlow(LoginUiState())
     val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()

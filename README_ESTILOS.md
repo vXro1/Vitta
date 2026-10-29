@@ -6,8 +6,8 @@ Documentación del Design System implementado en `ui/theme/` y
 ## Filosofía visual
 
 Vitta se ve como una libreta cálida, no como una app "Material" genérica:
-fondos claros blanco-menta (`#F6FBF8`/`#FFFFFF`); un verde esmeralda como
-color de acción; naranja y ámbar como acentos de logro/racha (ver
+fondos marfil y papel (`#F9F4EE`/`#FFFCF8`); el verde oliva como
+color de acción; terracota y amarillo como acentos de racha/logro (ver
 README_COLORES.md); una sola tipografía redondeada y amigable (Nunito)
 en toda la app; esquinas muy redondeadas (botones e íconos en
 "pastilla", tarjetas con radios grandes); sombras muy suaves y bajas en

@@ -4,7 +4,10 @@ import android.app.Application
 import coil.ImageLoader
 import coil.ImageLoaderFactory
 import coil.decode.SvgDecoder
+import com.vitta.app.data.local.LogroCelebrationStore
+import com.vitta.app.data.local.StreakNoticeStore
 import com.vitta.app.data.remote.ApiClient
+import com.vitta.app.ui.components.icons.HabitIconStore
 
 /**
  * Registers Coil's SVG decoder app-wide so [com.vitta.app.ui.components.common.VittaAssetImage]
@@ -14,6 +17,9 @@ class VittaApplication : Application(), ImageLoaderFactory {
     override fun onCreate() {
         super.onCreate()
         ApiClient.init(this)
+        HabitIconStore.init(this)
+        LogroCelebrationStore.init(this)
+        StreakNoticeStore.init(this)
     }
     override fun newImageLoader(): ImageLoader =
         ImageLoader.Builder(this)

@@ -25,7 +25,8 @@ fun VittaAssetImage(
     assetPath: String,
     contentDescription: String?,
     modifier: Modifier = Modifier,
-    size: Dp? = null
+    size: Dp? = null,
+    colorFilter: androidx.compose.ui.graphics.ColorFilter? = null
 ) {
     AsyncImage(
         model = ImageRequest.Builder(androidx.compose.ui.platform.LocalContext.current)
@@ -33,7 +34,8 @@ fun VittaAssetImage(
             .build(),
         contentDescription = contentDescription,
         modifier = if (size != null) modifier.size(size) else modifier,
-        contentScale = ContentScale.Fit
+        contentScale = ContentScale.Fit,
+        colorFilter = colorFilter
     )
 }
 

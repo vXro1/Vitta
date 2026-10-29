@@ -7,6 +7,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -22,6 +23,7 @@ import com.vitta.app.ui.components.forms.VittaAuthTextField
 import com.vitta.app.ui.components.icons.HabitIcons
 import com.vitta.app.ui.theme.VittaColorRoles
 import com.vitta.app.ui.theme.VittaSpacing
+import com.vitta.app.ui.theme.VittaTextStyles
 
 /** Ancho máximo del formulario para que en tablets/horizontal no se estire. */
 internal val HabitFormMaxWidth = 560.dp
@@ -69,20 +71,11 @@ fun CustomHabitScreen(
         }
 
         HabitFormSection(
-            title = "Icono",
+            title = "Ícono",
             step = 2,
-            supportingText = "Te sugerimos uno según el nombre. Toca “Más” para ver todo el catálogo."
+            supportingText = "Te sugerimos uno según el nombre. Toca otro para cambiarlo o “Más” para ver todos."
         ) {
             HabitIconPicker(selected = state.icon, onSelect = viewModel::onIconSelect)
-            // El servidor no guarda el icono: al recargar se deduce del nombre.
-            val shownLater = HabitIcons.forHabitName(state.nombre) ?: HabitIcons.Default
-            if (state.nombre.isNotBlank() && shownLater.id != state.icon.id) {
-                Spacer(Modifier.height(VittaSpacing.Sm))
-                HabitInfoNote(
-                    "El servidor aún no guarda el icono elegido. En tu inicio este hábito " +
-                        "se verá con el icono “${shownLater.label}”, que es el que coincide con su nombre."
-                )
-            }
         }
 
         HabitFormSection(title = "Meta", step = 3, supportingText = "¿Cuánto quieres lograr cada vez?") {
@@ -108,19 +101,20 @@ fun CustomHabitScreen(
             )
         }
 
-        HabitFormSection(title = "Recordatorio", step = 5) {
+        HabitFormSection(title = "¿A qué hora?", step = 5) {
             HabitReminderTimeField(time = state.reminderTime, onTimeChange = viewModel::onReminderChange)
             Spacer(Modifier.height(VittaSpacing.Sm))
-            HabitInfoNote(ReminderNotSavedNote)
+            HabitInfoNote(ReminderNote)
         }
 
-        HabitInfoNote("Crear un hábito no otorga VitaPuntos. Los puntos llegan cuando registras cumplimiento.")
+        HabitInfoNote("Cada vez que cumplas este hábito ganarás 10 VitaPuntos.")
     }
 }
 
-/** Aviso honesto: el backend todavía no guarda icono ni hora (ver informe). */
-internal const val ReminderNotSavedNote =
-    "Por ahora la hora no se guarda en tu cuenta ni genera notificaciones: el servidor aún no tiene dónde almacenarla."
+/** La hora se guarda como recordatorio del hábito (`/api/recordatorios`) y ordena la pestaña «Hoy». */
+internal const val ReminderNote =
+    "La hora se guarda en tu cuenta y ubica el hábito en la mañana, la tarde o la noche de tu pestaña «Hoy»."
+
 
 /**
  * Esqueleto común de los formularios de hábito: cabecera con regreso,

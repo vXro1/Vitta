@@ -131,7 +131,7 @@ esta etapa. `ui/theme/Type.kt` las expone como `NunitoFamily`.
 hacer con fidelidad 1:1 porque, a diferencia de los íconos/insignias, este
 archivo es solo 5 `<path>` planos de un color. El ícono adaptativo
 (`mipmap-anydpi-v26/ic_launcher.xml`) lo combina con el fondo
-`ic_launcher_background` (el fondo de marca, `#F6FBF8`).
+`ic_launcher_background` (el fondo marfil de la marca, `#F9F4EE`).
 
 
 ## Iconos de hábitos — Icons8 (2026-10)

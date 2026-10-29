@@ -30,6 +30,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.style.TextAlign
+import com.vitta.app.ui.components.common.VittaAssetImage
+import com.vitta.app.ui.components.common.VittaIconAssets
 import androidx.compose.ui.unit.dp
 import com.vitta.app.ui.components.buttons.VittaIconCircleButton
 import com.vitta.app.ui.components.buttons.VittaOutlinedButton
@@ -221,7 +229,7 @@ fun VittaRewardSheet(
                 }
                 Row(verticalAlignment = Alignment.Top) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(area, style = VittaTextStyles.label, color = VittaColors.OrangeAccent)
+                        Text(area, style = VittaTextStyles.label, color = VittaColors.GreenPressed)
                         Spacer(Modifier.height(VittaSpacing.Xs))
                         Text(title, style = VittaTextStyles.heading, color = VittaColorRoles.textPrimary)
                         Spacer(Modifier.height(VittaSpacing.Xs))
@@ -239,6 +247,136 @@ fun VittaRewardSheet(
                 content = content
             )
             Spacer(Modifier.height(VittaSpacing.Lg))
+        }
+    }
+}
+
+/**
+ * Celebración "¡Felicitaciones!" al sumar un nuevo día de racha: tarjeta
+ * centrada sobre el mismo scrim de [VittaConfirmDialog] / [VittaRewardSheet],
+ * con la mascota y confeti arriba, la píldora "¡NUEVO LOGRO!", el contador
+ * real de días de racha (llama de Vitta) y el botón "¡Genial!" para cerrarla.
+ */
+@Composable
+fun VittaStreakDialog(
+    visible: Boolean,
+    days: Int,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+    mascot: @Composable () -> Unit
+) {
+    VittaModalScrim(visible = visible, onDismissRequest = onDismiss, alignment = Alignment.Center) {
+        Column(
+            modifier = modifier
+                .padding(horizontal = VittaSpacing.Xl)
+                .fillMaxWidth()
+                .background(VittaColorRoles.surface, RoundedCornerShape(28.dp))
+                .padding(horizontal = VittaSpacing.Xl, vertical = VittaSpacing.Lg),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // Mascota con confeti y la llama de racha a los lados.
+            Box(Modifier.fillMaxWidth().height(150.dp), contentAlignment = Alignment.Center) {
+                Confeti(Modifier.matchParentSize())
+                VittaAssetImage(
+                    assetPath = VittaIconAssets.streakFlame,
+                    contentDescription = null,
+                    size = 26.dp,
+                    modifier = Modifier.align(Alignment.CenterEnd).padding(end = 22.dp, bottom = 10.dp)
+                )
+                mascot()
+            }
+            Spacer(Modifier.height(VittaSpacing.Sm))
+            Text(
+                "¡NUEVO LOGRO!",
+                style = VittaTextStyles.label.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Bold),
+                color = VittaColors.OrangeAccent,
+                modifier = Modifier
+                    .background(VittaColors.OrangeAccent.copy(alpha = 0.08f), RoundedCornerShape(50))
+                    .border(1.dp, VittaColors.OrangeAccent.copy(alpha = 0.35f), RoundedCornerShape(50))
+                    .padding(horizontal = VittaSpacing.Md, vertical = VittaSpacing.Xs)
+            )
+            Spacer(Modifier.height(VittaSpacing.Md))
+            Text(
+                "¡Felicitaciones!",
+                style = VittaTextStyles.displayLarge,
+                color = VittaColorRoles.textPrimary,
+                textAlign = TextAlign.Center
+            )
+            Spacer(Modifier.height(VittaSpacing.Xs))
+            Text(
+                "Acabas de desbloquear un nuevo día de racha",
+                style = VittaTextStyles.body,
+                color = VittaColorRoles.textSecondary,
+                textAlign = TextAlign.Center
+            )
+            Spacer(Modifier.height(VittaSpacing.Lg))
+            Row(
+                modifier = Modifier
+                    .background(VittaColorRoles.surfaceVariant, RoundedCornerShape(50))
+                    .padding(horizontal = VittaSpacing.Xl, vertical = VittaSpacing.Sm),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                VittaAssetImage(assetPath = VittaIconAssets.streakFlame, contentDescription = null, size = 26.dp)
+                Spacer(Modifier.width(VittaSpacing.Sm))
+                Text("$days", style = VittaTextStyles.heading, color = VittaColorRoles.textPrimary)
+                Spacer(Modifier.width(VittaSpacing.Xs))
+                Text(
+                    if (days == 1) "día de racha" else "días de racha",
+                    style = VittaTextStyles.body,
+                    color = VittaColorRoles.textSecondary
+                )
+            }
+            Spacer(Modifier.height(VittaSpacing.Lg))
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 52.dp)
+                    .clip(RoundedCornerShape(50))
+                    .background(VittaColorRoles.toastSurface)
+                    .clickable(role = Role.Button, onClick = onDismiss),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    "¡Genial!",
+                    style = VittaTextStyles.button.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Bold),
+                    color = VittaColorRoles.toastOnSurface
+                )
+            }
+        }
+    }
+}
+
+/** Confeti decorativo alrededor de la mascota (colores de la marca). */
+@Composable
+private fun Confeti(modifier: Modifier) {
+    val piezas = remember {
+        listOf(
+            // x, y (fracción del área), ángulo, color
+            Triple(0.16f, 0.22f, -30f) to VittaColors.GoldAccent,
+            Triple(0.26f, 0.62f, 25f) to VittaColors.GreenMid,
+            Triple(0.08f, 0.46f, 60f) to VittaColors.OrangeAccent,
+            Triple(0.80f, 0.18f, 35f) to VittaColors.GreenMid,
+            Triple(0.88f, 0.42f, -50f) to VittaColors.GoldAccent,
+            Triple(0.74f, 0.70f, 15f) to VittaColors.OrangeAccent,
+            Triple(0.34f, 0.08f, 70f) to VittaColors.OrangeAccent,
+            Triple(0.64f, 0.06f, -15f) to VittaColors.GoldAccent
+        )
+    }
+    androidx.compose.foundation.Canvas(modifier) {
+        val w = 5.dp.toPx()
+        val h = 14.dp.toPx()
+        piezas.forEach { (pos, color) ->
+            val (fx, fy, angulo) = pos
+            val cx = size.width * fx
+            val cy = size.height * fy
+            rotate(angulo, pivot = androidx.compose.ui.geometry.Offset(cx, cy)) {
+                drawRoundRect(
+                    color = color,
+                    topLeft = androidx.compose.ui.geometry.Offset(cx - w / 2, cy - h / 2),
+                    size = androidx.compose.ui.geometry.Size(w, h),
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(w / 2)
+                )
+            }
         }
     }
 }

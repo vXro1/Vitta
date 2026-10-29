@@ -5,8 +5,16 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.PlayCircle
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
+import com.vitta.app.ui.components.buttons.VittaOutlinedButton
+import com.vitta.app.ui.theme.VittaColorRoles
+import com.vitta.app.ui.theme.VittaTextStyles
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
@@ -88,15 +96,52 @@ fun LoginScreen(
         VittaPrimaryButton(
             text = if (state.isLoading) "Iniciando sesión…" else "Iniciar sesión",
             onClick = submit,
-            loading = state.isLoading
+            loading = state.isLoading,
+            enabled = !state.isDemoLoading
         )
 
         Spacer(Modifier.height(VittaSpacing.Lg))
+        DemoDivider()
+        Spacer(Modifier.height(VittaSpacing.Lg))
+
+        VittaOutlinedButton(
+            text = if (state.isDemoLoading) "Preparando la demo…" else "Entrar con la cuenta demo",
+            onClick = {
+                focusManager.clearFocus()
+                viewModel.enterDemo(onSuccess = onLoginSuccess)
+            },
+            loading = state.isDemoLoading,
+            enabled = !state.isLoading,
+            icon = Icons.Outlined.PlayCircle
+        )
+        Text(
+            "Explora Vitta con hábitos y progreso de ejemplo, sin crear una cuenta.",
+            style = VittaTextStyles.bodySmall,
+            color = VittaColorRoles.textMuted,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth().padding(top = VittaSpacing.Sm)
+        )
+
+        Spacer(Modifier.height(VittaSpacing.Xl))
 
         VittaAuthFooterLink(
             question = "¿No tienes cuenta?",
             action = "Crea una",
             onClick = onNavigateToRegister
         )
+    }
+}
+
+@Composable
+private fun DemoDivider() {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        HorizontalDivider(Modifier.weight(1f), color = VittaColorRoles.border)
+        Text(
+            "o",
+            style = VittaTextStyles.bodySmall,
+            color = VittaColorRoles.textMuted,
+            modifier = Modifier.padding(horizontal = VittaSpacing.Md)
+        )
+        HorizontalDivider(Modifier.weight(1f), color = VittaColorRoles.border)
     }
 }
