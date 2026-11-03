@@ -16,6 +16,8 @@ import com.vitta.app.ui.screens.profile.ProfileScreen
 import com.vitta.app.ui.theme.VittaColorRoles
 import com.vitta.app.ui.theme.VittaTextStyles
 import com.vitta.app.ui.screens.today.TodayScreen
+import com.vitta.app.data.repository.ProfileResult
+import com.vitta.app.data.repository.UserRepository
 
 @Composable
 fun MainScreen(
@@ -29,6 +31,11 @@ fun MainScreen(
     var tab by rememberSaveable { mutableStateOf(VittaDestination.Home) }
     val checklistViewModel: ChecklistViewModel = viewModel()
     val checklistState by checklistViewModel.uiState.collectAsState()
+    var memberSince by rememberSaveable { mutableStateOf<String?>(null) }
+    LaunchedEffect(Unit) {
+        val result = UserRepository().getMe()
+        if (result is ProfileResult.Success) memberSince = result.user.creado_en
+    }
 
     LaunchedEffect(refreshRequests) {
         if (refreshRequests > 0) checklistViewModel.load()
@@ -64,7 +71,8 @@ fun MainScreen(
                     userEmail = userEmail,
                     activeHabits = checklistState.cards.size,
                     bestStreak = checklistState.bestStreakEver,
-                    onLogout = onLogout
+                    onLogout = onLogout,
+                    memberSince = memberSince
                 )
             }
         }

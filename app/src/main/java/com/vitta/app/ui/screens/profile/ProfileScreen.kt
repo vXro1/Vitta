@@ -39,6 +39,10 @@ import com.vitta.app.ui.theme.VittaColors
 import com.vitta.app.ui.theme.VittaShapes
 import com.vitta.app.ui.theme.VittaSpacing
 import com.vitta.app.ui.theme.VittaTextStyles
+import java.time.OffsetDateTime
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 private val ProfileMaxWidth = 640.dp
 
@@ -54,7 +58,8 @@ fun ProfileScreen(
     userEmail: String?,
     activeHabits: Int,
     bestStreak: Int,
-    onLogout: () -> Unit
+    onLogout: () -> Unit,
+    memberSince: String? = null
 ) {
     var confirmLogout by rememberSaveable { mutableStateOf(false) }
     val uriHandler = LocalUriHandler.current
@@ -105,6 +110,9 @@ fun ProfileScreen(
                     Text(userName.ifBlank { "Usuario de Vitta" }, style = VittaTextStyles.title, color = VittaColorRoles.textPrimary)
                     if (!userEmail.isNullOrBlank()) {
                         Text(userEmail, style = VittaTextStyles.bodySmall, color = VittaColorRoles.textSecondary)
+                    }
+                    formatMemberSince(memberSince)?.let { texto ->
+                        Text(texto, style = VittaTextStyles.bodySmall, color = VittaColorRoles.textMuted)
                     }
                 }
             }
@@ -259,4 +267,14 @@ private fun ProfileRow(icon: ImageVector, label: String, value: String) {
             modifier = Modifier.weight(1f)
         )
     }
+}
+
+/** "2026-10-05T14:22:10Z" -> "Miembro desde octubre de 2026". Null si no hay fecha válida. */
+private fun formatMemberSince(creadoEn: String?): String? {
+    if (creadoEn.isNullOrBlank()) return null
+    return runCatching {
+        val fecha = OffsetDateTime.parse(creadoEn).atZoneSameInstant(ZoneId.systemDefault())
+        val mes = fecha.format(DateTimeFormatter.ofPattern("MMMM 'de' yyyy", Locale.forLanguageTag("es-CO")))
+        "Miembro desde $mes"
+    }.getOrNull()
 }

@@ -43,3 +43,4 @@ data class StreakDto(
     val racha_actual: Int,
     val racha_maxima: Int
 )
+
