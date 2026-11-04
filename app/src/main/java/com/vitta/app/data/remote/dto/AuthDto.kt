@@ -3,7 +3,7 @@ package com.vitta.app.data.remote.dto
 data class RegisterRequest(
     val nombre: String,
     val correo: String,
-    val password: String
+    val password: String,
 )
 
 data class LoginRequest(
@@ -14,7 +14,8 @@ data class LoginRequest(
 data class UsuarioDto(
     val id: Int,
     val nombre: String,
-    val correo: String
+    val correo: String,
+    val creado_en: String? = null
 )
 
 data class AuthResponse(
