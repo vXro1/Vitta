@@ -76,6 +76,37 @@ data class CreateReminderRequest(
     val activo: Boolean = true
 )
 
+/** `PATCH /api/recordatorios/:id` parcial: Gson omite los campos null (solo se envía lo que cambia). */
 data class UpdateReminderRequest(
-    val hora: String
+    val hora: String? = null,
+    val activo: Boolean? = null
+)
+
+/** `PATCH /api/users/me`: solo los campos que cambian (Gson omite null). */
+data class UpdateProfileRequest(
+    val nombre: String? = null,
+    val correo: String? = null
+)
+
+/** `PATCH /api/users/me/password`. */
+data class ChangePasswordRequest(
+    val contrasena_actual: String,
+    val contrasena_nueva: String
+)
+
+/** Respuesta de `PATCH /api/users/me/password`: el backend invalida los tokens anteriores y entrega uno nuevo. */
+data class ChangePasswordResponse(
+    val mensaje: String?,
+    val token: String
+)
+
+/** `GET /api/points/me/movements`: cada suma de VitaPuntos guardada en la base de datos. */
+data class PointMovementDto(
+    val id: Int,
+    val registro_id: Int?,
+    val logro_id: Int?,
+    val puntos: Int,
+    /** `habito_cumplido` o `logro_desbloqueado`. */
+    val motivo: String,
+    val creado_en: String
 )

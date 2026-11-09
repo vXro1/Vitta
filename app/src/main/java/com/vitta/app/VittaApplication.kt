@@ -20,6 +20,8 @@ class VittaApplication : Application(), ImageLoaderFactory {
         HabitIconStore.init(this)
         LogroCelebrationStore.init(this)
         StreakNoticeStore.init(this)
+        com.vitta.app.data.reminders.ReminderScheduler.init(this)
+        com.vitta.app.data.local.AvatarStore.init(this)
     }
     override fun newImageLoader(): ImageLoader =
         ImageLoader.Builder(this)

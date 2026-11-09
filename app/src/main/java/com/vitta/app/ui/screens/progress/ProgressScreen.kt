@@ -79,7 +79,7 @@ fun ProgressScreen(viewModel: ProgressViewModel = viewModel()) {
                         onSelect = viewModel::selectPeriod,
                         modifier = Modifier.padding(top = 14.dp)
                     )
-                    ProgressContent(summary)
+                    ProgressContent(summary, state, onSelectMonth = viewModel::selectMonth)
                 }
             }
         }
@@ -125,7 +125,7 @@ private fun SampleBadge() {
 }
 
 @Composable
-private fun ProgressContent(summary: ProgressSummary) {
+private fun ProgressContent(summary: ProgressSummary, state: ProgressUiState, onSelectMonth: (java.time.YearMonth) -> Unit) {
     HeroCard(summary, Modifier.padding(top = 16.dp))
     CompletionChart(summary.bars, summary.period, Modifier.padding(top = 12.dp))
 
@@ -146,7 +146,17 @@ private fun ProgressContent(summary: ProgressSummary) {
         StatTile("${summary.activeHabits}", "Hábitos\nactivos", Mk.Sand, Mk.Ink, Mk.SandText, Modifier.weight(1f))
     }
 
-    HeatmapCard(summary.heatmap, Modifier.padding(top = 12.dp))
+    // HAL-17: calendario por mes con flechas y selector de mes/año.
+    HeatmapCard(
+        cells = state.calendarCells,
+        month = state.calendarMonth,
+        minMonth = state.minMonth,
+        maxMonth = state.maxMonth,
+        loading = state.calendarLoading,
+        error = state.calendarError,
+        onSelectMonth = onSelectMonth,
+        modifier = Modifier.padding(top = 12.dp)
+    )
 
     if (summary.habits.isNotEmpty()) {
         // margin:26px 2px 11px; h3 Caprasimo 17px + Vitta lectora.

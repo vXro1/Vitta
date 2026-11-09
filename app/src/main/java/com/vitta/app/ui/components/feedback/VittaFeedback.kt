@@ -263,7 +263,95 @@ fun VittaStreakDialog(
     days: Int,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
+    /** VitaPuntos ganados con el mismo registro (HAL-12): se muestran aquí para no abrir otro modal. */
+    bonusPoints: Int? = null,
     mascot: @Composable () -> Unit
+) {
+    VittaCelebrationCard(
+        visible = visible,
+        pill = "¡NUEVO LOGRO!",
+        title = "¡Felicitaciones!",
+        message = "Acabas de desbloquear un nuevo día de racha",
+        onDismiss = onDismiss,
+        modifier = modifier,
+        mascot = mascot
+    ) {
+        Row(
+            modifier = Modifier
+                .background(VittaColorRoles.surfaceVariant, RoundedCornerShape(50))
+                .padding(horizontal = VittaSpacing.Xl, vertical = VittaSpacing.Sm),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            VittaAssetImage(assetPath = VittaIconAssets.streakFlame, contentDescription = null, size = 26.dp)
+            Spacer(Modifier.width(VittaSpacing.Sm))
+            Text("$days", style = VittaTextStyles.heading, color = VittaColorRoles.textPrimary)
+            Spacer(Modifier.width(VittaSpacing.Xs))
+            Text(
+                if (days == 1) "día de racha" else "días de racha",
+                style = VittaTextStyles.body,
+                color = VittaColorRoles.textSecondary
+            )
+        }
+        if (bonusPoints != null && bonusPoints > 0) {
+            Spacer(Modifier.height(VittaSpacing.Sm))
+            PointsPill(bonusPoints)
+        }
+    }
+}
+
+/**
+ * Felicitación por VitaPuntos ganados al completar un hábito (HAL-12): mismo
+ * estilo del modal de racha (Vitta, confeti y botón "¡Genial!") en vez del
+ * toast que pasaba desapercibido.
+ */
+@Composable
+fun VittaPointsDialog(
+    visible: Boolean,
+    habitName: String,
+    points: Int?,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+    mascot: @Composable () -> Unit
+) {
+    VittaCelebrationCard(
+        visible = visible,
+        pill = "¡HÁBITO COMPLETADO!",
+        title = "¡$habitName listo!",
+        message = if (points != null && points > 0) "Sumaste VitaPuntos por cumplir tu meta de hoy"
+        else "Cumpliste tu meta de hoy",
+        onDismiss = onDismiss,
+        modifier = modifier,
+        mascot = mascot
+    ) {
+        if (points != null && points > 0) PointsPill(points)
+    }
+}
+
+@Composable
+private fun PointsPill(points: Int) {
+    Row(
+        modifier = Modifier
+            .background(VittaColors.GoldAccent.copy(alpha = 0.18f), RoundedCornerShape(50))
+            .padding(horizontal = VittaSpacing.Xl, vertical = VittaSpacing.Sm),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text("+$points", style = VittaTextStyles.heading, color = VittaColorRoles.textPrimary)
+        Spacer(Modifier.width(VittaSpacing.Xs))
+        Text("VitaPuntos", style = VittaTextStyles.body, color = VittaColorRoles.textSecondary)
+    }
+}
+
+/** Tarjeta centrada de celebración compartida por el modal de racha y el de VitaPuntos. */
+@Composable
+private fun VittaCelebrationCard(
+    visible: Boolean,
+    pill: String,
+    title: String,
+    message: String,
+    onDismiss: () -> Unit,
+    modifier: Modifier,
+    mascot: @Composable () -> Unit,
+    counter: @Composable ColumnScope.() -> Unit
 ) {
     VittaModalScrim(visible = visible, onDismissRequest = onDismiss, alignment = Alignment.Center) {
         Column(
@@ -287,7 +375,7 @@ fun VittaStreakDialog(
             }
             Spacer(Modifier.height(VittaSpacing.Sm))
             Text(
-                "¡NUEVO LOGRO!",
+                pill,
                 style = VittaTextStyles.label.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Bold),
                 color = VittaColors.OrangeAccent,
                 modifier = Modifier
@@ -297,35 +385,20 @@ fun VittaStreakDialog(
             )
             Spacer(Modifier.height(VittaSpacing.Md))
             Text(
-                "¡Felicitaciones!",
+                title,
                 style = VittaTextStyles.displayLarge,
                 color = VittaColorRoles.textPrimary,
                 textAlign = TextAlign.Center
             )
             Spacer(Modifier.height(VittaSpacing.Xs))
             Text(
-                "Acabas de desbloquear un nuevo día de racha",
+                message,
                 style = VittaTextStyles.body,
                 color = VittaColorRoles.textSecondary,
                 textAlign = TextAlign.Center
             )
             Spacer(Modifier.height(VittaSpacing.Lg))
-            Row(
-                modifier = Modifier
-                    .background(VittaColorRoles.surfaceVariant, RoundedCornerShape(50))
-                    .padding(horizontal = VittaSpacing.Xl, vertical = VittaSpacing.Sm),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                VittaAssetImage(assetPath = VittaIconAssets.streakFlame, contentDescription = null, size = 26.dp)
-                Spacer(Modifier.width(VittaSpacing.Sm))
-                Text("$days", style = VittaTextStyles.heading, color = VittaColorRoles.textPrimary)
-                Spacer(Modifier.width(VittaSpacing.Xs))
-                Text(
-                    if (days == 1) "día de racha" else "días de racha",
-                    style = VittaTextStyles.body,
-                    color = VittaColorRoles.textSecondary
-                )
-            }
+            counter()
             Spacer(Modifier.height(VittaSpacing.Lg))
             Box(
                 modifier = Modifier

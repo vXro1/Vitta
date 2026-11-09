@@ -207,6 +207,28 @@ class HabitRepository {
         HabitResult.Error("No se pudo conectar.")
     }
 
+    /** Activos y desactivados (`?incluir_archivados=true`), para la pantalla Mis hábitos y la bitácora. */
+    suspend fun listAllHabits(): HabitsResult = try {
+        HabitsResult.Success(ApiClient.habitApi.listAllHabits())
+    } catch (e: HttpException) {
+        HabitsResult.Error("No se pudieron cargar tus hábitos (${e.code()})")
+    } catch (e: Exception) {
+        HabitsResult.Error("No se pudo conectar. Revisa tu conexión.")
+    }
+
+    /** Desactivar (`POST /archive`) o volver a activar (`POST /restore`) conservando el historial. */
+    suspend fun setActive(habitId: Int, activo: Boolean): HabitResult = try {
+        HabitResult.Success(
+            if (activo) ApiClient.habitApi.restoreHabit(habitId) else ApiClient.habitApi.archiveHabit(habitId)
+        )
+    } catch (e: HttpException) {
+        HabitResult.Error(
+            if (activo) "No se pudo activar el hábito (${e.code()})" else "No se pudo desactivar el hábito (${e.code()})"
+        )
+    } catch (e: Exception) {
+        HabitResult.Error("No se pudo conectar. Revisa tu conexión.")
+    }
+
     suspend fun getStreak(habitId: Int): StreakResult = try {
         StreakResult.Success(ApiClient.habitApi.getStreak(habitId))
     } catch (e: HttpException) {

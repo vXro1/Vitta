@@ -236,11 +236,11 @@ data class VittaPasswordRequirement(val label: String, val met: Boolean)
  * bloquea el envío sigue viviendo en el ViewModel.
  */
 fun vittaPasswordRequirements(password: String): List<VittaPasswordRequirement> = listOf(
-    VittaPasswordRequirement("Mínimo 8 caracteres", password.length >= 8),
-    VittaPasswordRequirement("Una letra mayúscula", password.any { it.isUpperCase() }),
-    VittaPasswordRequirement("Una letra minúscula", password.any { it.isLowerCase() }),
-    VittaPasswordRequirement("Un número", password.any { it.isDigit() }),
-    VittaPasswordRequirement("Un carácter especial (!@#\$…)", password.any { !it.isLetterOrDigit() && !it.isWhitespace() })
+    // Las mismas reglas obligatorias de VittaValidation.contrasena.
+    VittaPasswordRequirement("Letras", password.any { it.isLetter() }),
+    VittaPasswordRequirement("Al menos una mayúscula", password.any { it.isUpperCase() }),
+    VittaPasswordRequirement("Al menos un número", password.any { it.isDigit() }),
+    VittaPasswordRequirement("Mínimo 8 caracteres", password.length >= 8)
 )
 
 @Composable
