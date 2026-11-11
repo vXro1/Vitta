@@ -16,6 +16,14 @@ val releaseBaseUrl: String = (project.findProperty("vitta.baseUrl") as String?)
     ?: localProps.getProperty("vitta.baseUrl")
     ?: "https://CAMBIAR-URL/api/"
 
+// Datos para firmar el APK de release. Están en keystore.properties (no se sube
+// a git, ver keystore.properties.example). Si el archivo no existe el release
+// sale sin firmar.
+val keystoreFile = rootProject.file("keystore.properties")
+val keystoreProps = Properties().apply {
+    if (keystoreFile.exists()) keystoreFile.inputStream().use { load(it) }
+}
+
 // Contraseña de la cuenta demo (solo debug). No va en el código: se pone
 // vitta.demoPassword en local.properties. Sin ella el botón Demo no aparece.
 val demoPassword: String = (project.findProperty("vitta.demoPassword") as String?)
@@ -38,6 +46,17 @@ android {
         }
     }
 
+    signingConfigs {
+        create("release") {
+            if (keystoreFile.exists()) {
+                storeFile = rootProject.file(keystoreProps.getProperty("storeFile"))
+                storePassword = keystoreProps.getProperty("storePassword")
+                keyAlias = keystoreProps.getProperty("keyAlias")
+                keyPassword = keystoreProps.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         debug {
             // 10.0.2.2 es el localhost del PC visto desde el emulador
@@ -51,6 +70,9 @@ android {
             manifestPlaceholders["usesCleartext"] = "false"
             // la cuenta demo no existe en release
             buildConfigField("String", "DEMO_PASSWORD", "\"\"")
+            if (keystoreFile.exists()) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
