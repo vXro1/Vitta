@@ -1,5 +1,6 @@
 package com.vitta.app.data.remote
 
+import com.vitta.app.BuildConfig
 import com.vitta.app.data.local.TokenManager
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -11,7 +12,8 @@ import retrofit2.converter.gson.GsonConverterFactory
 
 object ApiClient {
 
-    private const val BASE_URL = "http://10.0.2.2:3000/api/"
+    // Se define en app/build.gradle.kts (debug = emulador, release = servidor real)
+    private val BASE_URL = BuildConfig.BASE_URL
 
     private lateinit var appContext: android.content.Context
 

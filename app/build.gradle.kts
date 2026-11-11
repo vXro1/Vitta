@@ -1,8 +1,20 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
 }
+
+// URL del backend para release: primero -Pvitta.baseUrl=..., luego
+// vitta.baseUrl en local.properties. Si no hay ninguna queda el placeholder.
+val localProps = Properties().apply {
+    val f = rootProject.file("local.properties")
+    if (f.exists()) f.inputStream().use { load(it) }
+}
+val releaseBaseUrl: String = (project.findProperty("vitta.baseUrl") as String?)
+    ?: localProps.getProperty("vitta.baseUrl")
+    ?: "https://CAMBIAR-URL/api/"
 
 android {
     namespace = "com.vitta.app"
@@ -21,7 +33,15 @@ android {
     }
 
     buildTypes {
+        debug {
+            // 10.0.2.2 es el localhost del PC visto desde el emulador
+            buildConfigField("String", "BASE_URL", "\"http://10.0.2.2:3000/api/\"")
+            manifestPlaceholders["usesCleartext"] = "true"
+        }
         release {
+            buildConfigField("String", "BASE_URL", "\"$releaseBaseUrl\"")
+            // en release solo HTTPS
+            manifestPlaceholders["usesCleartext"] = "false"
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -41,6 +61,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     packaging {
