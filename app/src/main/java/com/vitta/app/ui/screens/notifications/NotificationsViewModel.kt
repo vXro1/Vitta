@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.vitta.app.data.reminders.ReminderScheduler
 import com.vitta.app.data.remote.dto.HabitDto
 import com.vitta.app.data.remote.dto.ReminderDto
+import com.vitta.app.data.repository.DeleteReminderResult
 import com.vitta.app.data.repository.HabitRepository
 import com.vitta.app.data.repository.HabitsResult
 import com.vitta.app.data.repository.LogroRepository
@@ -150,6 +151,24 @@ class NotificationsViewModel(
     fun cambiarActivo(item: ReminderItem, activo: Boolean) = actualizar(item, activo = activo)
 
     fun cambiarHora(item: ReminderItem, hora: String) = actualizar(item, hora = hora)
+
+    /** DELETE /api/recordatorios/:id; el repositorio también cancela la alarma. */
+    fun borrar(item: ReminderItem) {
+        if (_uiState.value.ocupado != null) return
+        _uiState.update { it.copy(ocupado = item.reminder.id) }
+        viewModelScope.launch {
+            when (val r = userRepository.deleteReminder(item.reminder.id, item.habit.id)) {
+                is DeleteReminderResult.Success -> _uiState.update {
+                    it.copy(
+                        ocupado = null,
+                        recordatorios = it.recordatorios.filter { n -> n.reminder.id != item.reminder.id },
+                        mensaje = "Recordatorio de ${item.habit.nombre} borrado"
+                    )
+                }
+                is DeleteReminderResult.Error -> _uiState.update { it.copy(ocupado = null, mensaje = r.message) }
+            }
+        }
+    }
 
     private fun actualizar(item: ReminderItem, hora: String? = null, activo: Boolean? = null) {
         if (_uiState.value.ocupado != null) return

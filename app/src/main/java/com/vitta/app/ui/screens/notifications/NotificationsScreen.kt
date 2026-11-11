@@ -20,6 +20,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Alarm
 import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.EmojiEvents
 import androidx.compose.material.icons.outlined.LocalFireDepartment
 import androidx.compose.material.icons.outlined.NotificationsActive
@@ -93,6 +94,7 @@ fun NotificationsScreen(onBack: () -> Unit, viewModel: NotificationsViewModel = 
     var permiso by remember { mutableStateOf(tienePermiso(context)) }
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { permiso = it }
     var horaDe by remember { mutableStateOf<ReminderItem?>(null) }
+    var borrarDe by remember { mutableStateOf<ReminderItem?>(null) }
     var pestana by rememberSaveable { mutableStateOf(Pestana.Recordatorios) }
     var filtroR by rememberSaveable { mutableStateOf(FiltroRecordatorio.Todos) }
     var filtroH by rememberSaveable { mutableStateOf(FiltroHistorial.Todo) }
@@ -177,7 +179,8 @@ fun NotificationsScreen(onBack: () -> Unit, viewModel: NotificationsViewModel = 
                                     item = item,
                                     busy = state.ocupado == item.reminder.id,
                                     onToggle = { viewModel.cambiarActivo(item, it) },
-                                    onHora = { horaDe = item }
+                                    onHora = { horaDe = item },
+                                    onBorrar = { borrarDe = item }
                                 )
                             }
                             item {
@@ -215,6 +218,19 @@ fun NotificationsScreen(onBack: () -> Unit, viewModel: NotificationsViewModel = 
             initial = HabitTextFormat.parseHora(item.reminder.hora) ?: java.time.LocalTime.of(7, 0),
             onConfirm = { t -> horaDe = null; viewModel.cambiarHora(item, HabitTextFormat.hora(t)) },
             onDismiss = { horaDe = null }
+        )
+    }
+
+    borrarDe?.let { item ->
+        com.vitta.app.ui.common.VittaDangerDialog(
+            titulo = "¿Borrar el recordatorio de \"${item.habit.nombre}\"?",
+            mensaje = "Ya no te llegará el aviso de este hábito.",
+            conserva = "El hábito, tus días registrados y tu racha no cambian. Puedes volver a poner una hora al editar el hábito.",
+            etiqueta = "BORRAR RECORDATORIO",
+            confirmar = "Sí, borrar",
+            cancelar = "Cancelar",
+            onConfirm = { borrarDe = null; viewModel.borrar(item) },
+            onDismiss = { borrarDe = null }
         )
     }
 }
@@ -334,7 +350,13 @@ private fun Dia(dia: LocalDate) {
 }
 
 @Composable
-private fun RecordatorioRow(item: ReminderItem, busy: Boolean, onToggle: (Boolean) -> Unit, onHora: () -> Unit) {
+private fun RecordatorioRow(
+    item: ReminderItem,
+    busy: Boolean,
+    onToggle: (Boolean) -> Unit,
+    onHora: () -> Unit,
+    onBorrar: () -> Unit
+) {
     val hora = HabitTextFormat.parseHora(item.reminder.hora)
     val on = item.reminder.activo
     Row(
@@ -374,6 +396,17 @@ private fun RecordatorioRow(item: ReminderItem, busy: Boolean, onToggle: (Boolea
                 Text(hora?.let { formatReminderTime(it) } ?: item.reminder.hora, style = figtree(700, 12.5f), color = com.vitta.app.ui.theme.VittaColorRoles.reminder)
             }
             if (!on) Text("Pausado", style = figtree(600, 11.5f), color = Mk.SandText, modifier = Modifier.padding(top = 3.dp))
+        }
+        if (!busy) {
+            Box(
+                Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .clickable(role = Role.Button, onClickLabel = "Borrar recordatorio", onClick = onBorrar),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Outlined.Delete, contentDescription = "Borrar recordatorio", tint = Mk.Muted, modifier = Modifier.size(20.dp))
+            }
         }
         if (busy) CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp, color = Mk.Olive)
         else Switch(

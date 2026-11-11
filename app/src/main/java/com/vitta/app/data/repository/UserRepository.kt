@@ -87,6 +87,19 @@ class UserRepository {
     }
 
     /** Historial real de VitaPuntos (`GET /api/points/me/movements`). */
+    /** Borra el recordatorio en el backend y cancela su alarma en el teléfono. */
+    suspend fun deleteReminder(id: Int, habitId: Int): DeleteReminderResult = try {
+        val response = ApiClient.userApi.deleteReminder(id)
+        if (response.isSuccessful) {
+            com.vitta.app.data.reminders.ReminderScheduler.quitar(habitId)
+            DeleteReminderResult.Success
+        } else {
+            DeleteReminderResult.Error("No se pudo borrar el recordatorio (${response.code()})")
+        }
+    } catch (e: Exception) {
+        DeleteReminderResult.Error("No se pudo conectar.")
+    }
+
     suspend fun listMovements(): MovementsResult = try {
         MovementsResult.Success(ApiClient.userApi.listMovements())
     } catch (e: HttpException) {
@@ -94,6 +107,11 @@ class UserRepository {
     } catch (e: Exception) {
         MovementsResult.Error("No se pudo conectar.")
     }
+}
+
+sealed class DeleteReminderResult {
+    data object Success : DeleteReminderResult()
+    data class Error(val message: String) : DeleteReminderResult()
 }
 
 sealed class MovementsResult {

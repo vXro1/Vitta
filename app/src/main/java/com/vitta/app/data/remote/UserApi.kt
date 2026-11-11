@@ -10,7 +10,9 @@ import com.vitta.app.data.remote.dto.PointMovementDto
 import com.vitta.app.data.remote.dto.ReminderDto
 import com.vitta.app.data.remote.dto.UpdateProfileRequest
 import com.vitta.app.data.remote.dto.UpdateReminderRequest
+import retrofit2.Response
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.PATCH
 import retrofit2.http.POST
@@ -44,6 +46,10 @@ interface UserApi {
 
     @PATCH("recordatorios/{id}")
     suspend fun updateReminder(@Path("id") id: Int, @Body body: UpdateReminderRequest): ReminderDto
+
+    /** Backend: DELETE /api/recordatorios/:id — borra el recordatorio (el hábito queda igual). */
+    @DELETE("recordatorios/{id}")
+    suspend fun deleteReminder(@Path("id") id: Int): Response<Unit>
 
     /** Backend: GET /api/points/me/movements?limit= — historial real de VitaPuntos (máx. 100). */
     @GET("points/me/movements")

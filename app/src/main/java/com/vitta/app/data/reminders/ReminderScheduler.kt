@@ -86,6 +86,13 @@ object ReminderScheduler {
         save(appContext, items)
     }
 
+    /** El recordatorio se borró: se cancela su alarma y se quita de la copia local. */
+    fun quitar(habitId: Int) {
+        if (!::appContext.isInitialized) return
+        cancel(appContext, habitId)
+        save(appContext, load(appContext).filter { it.habitId != habitId })
+    }
+
     /** Notificación de prueba inmediata, para comprobar permiso y canal. */
     fun probar(context: Context) {
         ReminderReceiver.mostrar(context, Item(0, "tu hábito", "así se verán tus recordatorios", "", ""), prueba = true)
