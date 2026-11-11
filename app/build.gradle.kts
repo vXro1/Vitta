@@ -16,6 +16,12 @@ val releaseBaseUrl: String = (project.findProperty("vitta.baseUrl") as String?)
     ?: localProps.getProperty("vitta.baseUrl")
     ?: "https://CAMBIAR-URL/api/"
 
+// Contraseña de la cuenta demo (solo debug). No va en el código: se pone
+// vitta.demoPassword en local.properties. Sin ella el botón Demo no aparece.
+val demoPassword: String = (project.findProperty("vitta.demoPassword") as String?)
+    ?: localProps.getProperty("vitta.demoPassword")
+    ?: ""
+
 android {
     namespace = "com.vitta.app"
     compileSdk = 35
@@ -37,11 +43,14 @@ android {
             // 10.0.2.2 es el localhost del PC visto desde el emulador
             buildConfigField("String", "BASE_URL", "\"http://10.0.2.2:3000/api/\"")
             manifestPlaceholders["usesCleartext"] = "true"
+            buildConfigField("String", "DEMO_PASSWORD", "\"$demoPassword\"")
         }
         release {
             buildConfigField("String", "BASE_URL", "\"$releaseBaseUrl\"")
             // en release solo HTTPS
             manifestPlaceholders["usesCleartext"] = "false"
+            // la cuenta demo no existe en release
+            buildConfigField("String", "DEMO_PASSWORD", "\"\"")
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),

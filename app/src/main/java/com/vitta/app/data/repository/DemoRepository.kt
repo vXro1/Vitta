@@ -1,5 +1,6 @@
 package com.vitta.app.data.repository
 
+import com.vitta.app.BuildConfig
 import com.vitta.app.data.remote.dto.HabitDto
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -14,6 +15,9 @@ import kotlin.random.Random
  * [DEMO_CORREO]; si la cuenta no existe en el backend la crea, y si no tiene
  * hábitos ni historial le carga hábitos de ejemplo con unas semanas de
  * registros para que Inicio, Progreso y Logros se vean con datos.
+ *
+ * Solo sirve en debug: la contraseña sale de `vitta.demoPassword`
+ * (local.properties), no está escrita en el código.
  */
 class DemoRepository(
     private val auth: AuthRepository,
@@ -21,6 +25,7 @@ class DemoRepository(
 ) {
 
     suspend fun enter(): AuthResult {
+        if (!disponible) return AuthResult.OtherError("La cuenta demo no está disponible.")
         val login = auth.login(DEMO_CORREO, DEMO_PASSWORD)
         val result = if (login is AuthResult.InvalidCredentials) {
             auth.register(DEMO_NOMBRE, DEMO_CORREO, DEMO_PASSWORD)
@@ -76,9 +81,12 @@ class DemoRepository(
 
     companion object {
         const val DEMO_CORREO = "demo@vitta.test"
-        const val DEMO_PASSWORD = "Vitta2026!"
+        private val DEMO_PASSWORD = BuildConfig.DEMO_PASSWORD
         private const val DEMO_NOMBRE = "Demo Vitta"
         private const val DAYS = 27
+
+        /** El botón Demo solo se muestra en debug y si hay contraseña configurada. */
+        val disponible: Boolean = BuildConfig.DEBUG && DEMO_PASSWORD.isNotBlank()
 
         private val SAMPLE_HABITS = listOf(
             SampleHabit("Tomar agua", "8 vasos", "Diaria", .9f),
