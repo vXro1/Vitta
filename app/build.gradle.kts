@@ -16,6 +16,12 @@ val releaseBaseUrl: String = (project.findProperty("vitta.baseUrl") as String?)
     ?: localProps.getProperty("vitta.baseUrl")
     ?: "https://CAMBIAR-URL/api/"
 
+// URL para debug. Por defecto el emulador (10.0.2.2 = localhost del PC).
+// Para un celular físico se pone vitta.debugBaseUrl=http://IP-DEL-PC:3000/api/
+val debugBaseUrl: String = (project.findProperty("vitta.debugBaseUrl") as String?)
+    ?: localProps.getProperty("vitta.debugBaseUrl")
+    ?: "http://10.0.2.2:3000/api/"
+
 // Datos para firmar el APK de release. Están en keystore.properties (no se sube
 // a git, ver keystore.properties.example). Si el archivo no existe el release
 // sale sin firmar.
@@ -59,8 +65,7 @@ android {
 
     buildTypes {
         debug {
-            // 10.0.2.2 es el localhost del PC visto desde el emulador
-            buildConfigField("String", "BASE_URL", "\"http://10.0.2.2:3000/api/\"")
+            buildConfigField("String", "BASE_URL", "\"$debugBaseUrl\"")
             manifestPlaceholders["usesCleartext"] = "true"
             buildConfigField("String", "DEMO_PASSWORD", "\"$demoPassword\"")
         }
