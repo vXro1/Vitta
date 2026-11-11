@@ -22,7 +22,6 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.vitta.app.data.mock.suggestedUnits
 import com.vitta.app.ui.components.auth.VittaAuthErrorBanner
 import com.vitta.app.ui.components.buttons.VittaPrimaryButton
 import com.vitta.app.ui.components.forms.VittaAuthTextField
@@ -40,7 +39,8 @@ import com.vitta.app.ui.theme.VittaTextStyles
 fun EditHabitScreen(
     habitId: Int,
     onSaved: () -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onDeleted: () -> Unit = onSaved
 ) {
     val viewModel: EditHabitViewModel = viewModel(factory = EditHabitViewModelFactory(habitId))
     val state by viewModel.uiState.collectAsState()
@@ -74,6 +74,7 @@ fun EditHabitScreen(
         title = "Editar hábito",
         subtitle = "Los cambios se guardan en tu cuenta",
         onBack = onBack,
+        hasChanges = state.hasChanges,
         bottomBar = {
             state.errorMessage?.let {
                 VittaAuthErrorBanner(it)
@@ -82,6 +83,7 @@ fun EditHabitScreen(
             VittaPrimaryButton(
                 text = if (state.isSaving) "Guardando…" else "Guardar cambios",
                 loading = state.isSaving,
+                enabled = state.canSave,
                 onClick = {
                     focusManager.clearFocus()
                     viewModel.save(onSaved)
@@ -143,8 +145,7 @@ fun EditHabitScreen(
                 onCantidadChange = viewModel::onMetaValorChange,
                 unidad = state.metaUnidad,
                 onUnidadChange = viewModel::onMetaUnidadChange,
-                unitSuggestions = (listOf(state.metaUnidad) + suggestedUnits).filter { it.isNotBlank() }.distinct(),
-                step = HabitTextFormat.stepFor(state.metaUnidad),
+                units = com.vitta.app.ui.common.HabitUnits.paraHabito(state.icon),
                 cantidadError = state.metaError,
                 unidadError = state.unidadError
             )
@@ -187,35 +188,15 @@ fun EditHabitScreen(
 
     if (confirmDelete) {
         val archivar = state.tieneHistorial
-        AlertDialog(
-            onDismissRequest = { confirmDelete = false },
-            containerColor = VittaColorRoles.surface,
-            title = {
-                Text(
-                    if (archivar) "¿Archivar \"${state.nombre}\"?" else "¿Eliminar \"${state.nombre}\"?",
-                    style = VittaTextStyles.heading,
-                    color = VittaColorRoles.textPrimary
-                )
-            },
-            text = {
-                Text(
-                    if (archivar) "Dejará de aparecer en Inicio y en Hoy. Tus días registrados, tu racha, " +
-                        "tus VitaPuntos y tus medallas se conservan."
-                    else "Todavía no tiene registros, así que se borrará por completo.",
-                    style = VittaTextStyles.body,
-                    color = VittaColorRoles.textSecondary
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = { confirmDelete = false; viewModel.delete(onSaved) }) {
-                    Text(if (archivar) "Archivar" else "Eliminar", style = VittaTextStyles.button, color = VittaColors.Error)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { confirmDelete = false }) {
-                    Text("Cancelar", style = VittaTextStyles.button, color = VittaColorRoles.textSecondary)
-                }
-            }
+        com.vitta.app.ui.common.VittaDangerDialog(
+            titulo = if (archivar) "¿Archivar \"${state.nombre}\"?" else "¿Eliminar \"${state.nombre}\"?",
+            mensaje = if (archivar) "Dejará de aparecer en Inicio y en Hoy y dejarás de construir su racha."
+            else "Todavía no tiene registros, así que se borrará por completo. Esta acción no se puede deshacer.",
+            conserva = if (archivar) "Tus días registrados, tu racha, tus notas, tus VitaPuntos y tus medallas se conservan." else null,
+            confirmar = if (archivar) "Sí, archivar" else "Sí, eliminar",
+            cancelar = "Conservar hábito",
+            onConfirm = { confirmDelete = false; viewModel.delete(onDeleted) },
+            onDismiss = { confirmDelete = false }
         )
     }
 }

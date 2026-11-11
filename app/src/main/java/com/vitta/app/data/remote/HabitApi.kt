@@ -18,6 +18,7 @@ import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.PUT
 import retrofit2.http.Path
+import retrofit2.http.Query
 
 interface HabitApi {
     @GET("habits")
@@ -60,4 +61,16 @@ interface HabitApi {
     /** Borra el hábito; si ya tiene historial el backend lo archiva (`archivado: true`). */
     @DELETE("habits/{id}")
     suspend fun deleteHabit(@Path("id") habitId: Int): Response<DeleteHabitDto>
+
+    /** Backend: GET /api/habits?incluir_archivados=true — activos y desactivados (pantalla Mis hábitos). */
+    @GET("habits")
+    suspend fun listAllHabits(@Query("incluir_archivados") incluirArchivados: String = "true"): List<HabitDto>
+
+    /** Backend: POST /api/habits/:id/archive — desactiva (`activo = false`) y conserva el historial. */
+    @POST("habits/{id}/archive")
+    suspend fun archiveHabit(@Path("id") habitId: Int): HabitDto
+
+    /** Backend: POST /api/habits/:id/restore — vuelve a activar un hábito desactivado. */
+    @POST("habits/{id}/restore")
+    suspend fun restoreHabit(@Path("id") habitId: Int): HabitDto
 }

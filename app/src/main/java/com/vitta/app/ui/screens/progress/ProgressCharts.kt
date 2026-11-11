@@ -36,6 +36,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.automirrored.outlined.MenuBook
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -345,14 +346,27 @@ private fun ChartLegend() {
 // ---------------------------------------------------------------------------
 
 /**
- * Mapa de calor de las últimas cinco semanas, como un calendario: cada celda
- * muestra su día y al tocarla aparece el detalle (cumplidos / programados).
+ * Calendario mensual de cumplimiento (HAL-17): flechas para el mes anterior
+ * y el siguiente y selector de mes y año al tocar el título. Los datos del
+ * mes elegido se piden al backend (`GET /api/progress?desde&hasta`).
  */
 @Composable
-internal fun HeatmapCard(cells: List<HeatCell>, modifier: Modifier = Modifier) {
-    val todayIndex = cells.indexOfFirst { it.isToday }.takeIf { it >= 0 } ?: cells.lastIndex
-    var picked by rememberSaveable { mutableIntStateOf(-1) }
-    val selected = if (picked in cells.indices) picked else todayIndex
+internal fun HeatmapCard(
+    cells: List<HeatCell?>,
+    month: java.time.YearMonth,
+    minMonth: java.time.YearMonth,
+    maxMonth: java.time.YearMonth,
+    loading: Boolean,
+    error: String?,
+    onSelectMonth: (java.time.YearMonth) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val todayIndex = cells.indexOfFirst { it?.isToday == true }.takeIf { it >= 0 }
+        ?: cells.indexOfLast { it != null && it.level >= 0 }
+    var picked by rememberSaveable(month.toString()) { mutableIntStateOf(-1) }
+    val selected = if (picked in cells.indices && cells[picked] != null) picked else todayIndex
+    var pickerOpen by rememberSaveable { androidx.compose.runtime.mutableStateOf(false) }
+    val titulo = ProgressCalculator.MonthNames[month.monthValue - 1].replaceFirstChar { it.uppercase() } + " ${month.year}"
 
     Column(
         modifier
@@ -361,15 +375,33 @@ internal fun HeatmapCard(cells: List<HeatCell>, modifier: Modifier = Modifier) {
             .background(Mk.Paper, Card28)
             .padding(20.dp)
     ) {
-        Text("Últimas cinco semanas", style = figtree(600, 13f), color = Mk.Body)
-        if (cells.isNotEmpty()) {
-            Text(
-                "${shortDate(cells.first())} – ${shortDate(cells.last())} · toca un día para ver el detalle",
-                style = figtree(500, 11.5f, 1.35f),
-                color = Mk.Muted,
-                modifier = Modifier.padding(top = 3.dp)
-            )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            MonthArrow("‹", "Mes anterior", enabled = month > minMonth) { onSelectMonth(month.minusMonths(1)) }
+            Row(
+                Modifier
+                    .weight(1f)
+                    .clip(Pill)
+                    .clickable(role = Role.Button, onClickLabel = "Elegir mes y año") { pickerOpen = true }
+                    .padding(vertical = 6.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(titulo, style = figtree(700, 15f), color = Mk.Ink)
+                Text("  ▾", style = figtree(700, 13f), color = Mk.Muted)
+            }
+            MonthArrow("›", "Mes siguiente", enabled = month < maxMonth) { onSelectMonth(month.plusMonths(1)) }
         }
+        Text(
+            when {
+                loading -> "Cargando el mes…"
+                error != null -> error
+                else -> "Toca un día para ver el detalle"
+            },
+            style = figtree(500, 11.5f, 1.35f),
+            color = if (error != null) Mk.Danger else Mk.Muted,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth().padding(top = 3.dp)
+        )
 
         Row(Modifier.padding(top = 14.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             ProgressCalculator.DayLetters.forEach {
@@ -390,12 +422,17 @@ internal fun HeatmapCard(cells: List<HeatCell>, modifier: Modifier = Modifier) {
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     days.forEachIndexed { day, cell ->
                         val index = week * 7 + day
-                        HeatCellBox(
-                            cell = cell,
-                            isSelected = index == selected,
-                            onClick = { picked = if (picked == index) -1 else index },
-                            modifier = Modifier.weight(1f)
-                        )
+                        if (cell == null) {
+                            // Hueco antes del día 1 o después del último día del mes.
+                            Spacer(Modifier.weight(1f).aspectRatio(1f))
+                        } else {
+                            HeatCellBox(
+                                cell = cell,
+                                isSelected = index == selected,
+                                onClick = { picked = if (picked == index) -1 else index },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
                     }
                 }
             }
@@ -406,6 +443,16 @@ internal fun HeatmapCard(cells: List<HeatCell>, modifier: Modifier = Modifier) {
             transitionSpec = { fadeIn(tween(180)) togetherWith fadeOut(tween(120)) },
             label = "detalle-dia"
         ) { cell -> if (cell != null) HeatDetail(cell) }
+
+        if (pickerOpen) {
+            MonthYearPicker(
+                current = month,
+                minMonth = minMonth,
+                maxMonth = maxMonth,
+                onPick = { pickerOpen = false; onSelectMonth(it) },
+                onDismiss = { pickerOpen = false }
+            )
+        }
 
         Row(
             Modifier.padding(top = 14.dp).fillMaxWidth(),
@@ -473,22 +520,24 @@ private fun HeatDetail(cell: HeatCell) {
                 color = Mk.Muted,
                 modifier = Modifier.padding(top = 12.dp, bottom = 6.dp)
             )
-            cell.habitsDone.forEach { HabitDayRow(it.id, it.name, done = true, nota = it.nota) }
-            cell.habitsMissed.forEach { HabitDayRow(it.id, it.name, done = false, nota = it.nota) }
+            val fecha = dayLabel(cell)
+            cell.habitsDone.forEach { HabitDayRow(it.id, it.name, done = true, nota = it.nota, fecha = fecha) }
+            cell.habitsMissed.forEach { HabitDayRow(it.id, it.name, done = false, nota = it.nota, fecha = fecha) }
         }
     }
 }
 
 /** Una línea por hábito: ✓ cumplido (oliva) o círculo vacío (sin marcar). */
 @Composable
-private fun HabitDayRow(id: Int, name: String, done: Boolean, nota: String? = null) {
+private fun HabitDayRow(id: Int, name: String, done: Boolean, nota: String? = null, fecha: String = "") {
     val icon = com.vitta.app.ui.components.icons.HabitIconStore.iconFor(id, name)
+    var verNota by rememberSaveable(id, fecha) { androidx.compose.runtime.mutableStateOf(false) }
     Column(
         Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp)
             .semantics(mergeDescendants = true) {
-                contentDescription = "$name: " + (if (done) "cumplido" else "sin marcar") + (nota?.let { ". Nota: $it" } ?: "")
+                contentDescription = "$name: " + (if (done) "cumplido" else "sin marcar") + (if (nota != null) ". Tiene nota en la bitácora" else "")
             }
     ) {
     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -531,18 +580,34 @@ private fun HabitDayRow(id: Int, name: String, done: Boolean, nota: String? = nu
             color = if (done) Mk.OliveDeep else Mk.Muted
         )
     }
-    // Nota del día de ese hábito (lo que escribió al registrarlo).
+    // HAL-16: el resumen solo muestra "Ver bitácora"; la nota completa se lee en un modal.
     if (nota != null) {
-        Text(
-            "“$nota”",
-            style = figtree(500, 12.5f, 1.4f).copy(fontStyle = androidx.compose.ui.text.font.FontStyle.Italic),
-            color = Mk.Body,
-            modifier = Modifier
+        Row(
+            Modifier
                 .padding(start = 32.dp, top = 4.dp)
-                .fillMaxWidth()
-                .background(Mk.Paper, RoundedCornerShape(12.dp))
-                .padding(horizontal = 10.dp, vertical = 8.dp)
-        )
+                .clip(Pill)
+                .background(Mk.Paper, Pill)
+                .clickable(role = Role.Button, onClickLabel = "Ver la nota de $name") { verNota = true }
+                .padding(horizontal = 12.dp, vertical = 7.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            androidx.compose.material3.Icon(
+                androidx.compose.material.icons.Icons.AutoMirrored.Outlined.MenuBook,
+                contentDescription = null,
+                tint = Mk.OliveDeep,
+                modifier = Modifier.size(15.dp)
+            )
+            Spacer(Modifier.width(6.dp))
+            Text("Ver bitácora", style = figtree(600, 12f), color = Mk.OliveDeep)
+        }
+        if (verNota) {
+            com.vitta.app.ui.common.VittaNoteDialog(
+                titulo = "Bitácora · $name",
+                fecha = fecha,
+                nota = nota,
+                onDismiss = { verNota = false }
+            )
+        }
     }
     }
 }
@@ -650,4 +715,96 @@ internal fun HabitTrendRow(trend: HabitTrend, modifier: Modifier = Modifier) {
             modifier = Modifier.width(40.dp)
         )
     }
+}
+
+// ---------------------------------------------------------------------------
+// Navegación del calendario (HAL-17)
+// ---------------------------------------------------------------------------
+
+@Composable
+private fun MonthArrow(symbol: String, description: String, enabled: Boolean, onClick: () -> Unit) {
+    Box(
+        Modifier
+            .size(40.dp)
+            .clip(CircleShape)
+            .background(if (enabled) Mk.SandSoft else Color.Transparent)
+            .clickable(enabled = enabled, role = Role.Button, onClickLabel = description, onClick = onClick)
+            .semantics { contentDescription = description },
+        contentAlignment = Alignment.Center
+    ) {
+        Text(symbol, style = figtree(700, 22f, 1f), color = if (enabled) Mk.Ink else Mk.Dashed)
+    }
+}
+
+/** Selector de mes y año: año con flechas y los 12 meses (solo los que tienen datos posibles). */
+@Composable
+private fun MonthYearPicker(
+    current: java.time.YearMonth,
+    minMonth: java.time.YearMonth,
+    maxMonth: java.time.YearMonth,
+    onPick: (java.time.YearMonth) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var year by rememberSaveable { mutableIntStateOf(current.year) }
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = Mk.Paper,
+        shape = Card28,
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                MonthArrow("‹", "Año anterior", enabled = year > minMonth.year) { year -= 1 }
+                Text(
+                    "$year",
+                    style = figtree(700, 18f),
+                    color = Mk.Ink,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.weight(1f)
+                )
+                MonthArrow("›", "Año siguiente", enabled = year < maxMonth.year) { year += 1 }
+            }
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                (1..12).chunked(3).forEach { fila ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        fila.forEach { m ->
+                            val ym = java.time.YearMonth.of(year, m)
+                            val enabled = ym >= minMonth && ym <= maxMonth
+                            val isCurrent = ym == current
+                            Box(
+                                Modifier
+                                    .weight(1f)
+                                    .clip(Pill)
+                                    .background(
+                                        when {
+                                            isCurrent -> Mk.OliveDeep
+                                            enabled -> Mk.SandSoft
+                                            else -> Color.Transparent
+                                        }
+                                    )
+                                    .clickable(enabled = enabled, role = Role.Button) { onPick(ym) }
+                                    .padding(vertical = 10.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    ProgressCalculator.MonthNames[m - 1].take(3).replaceFirstChar { it.uppercase() },
+                                    style = figtree(if (isCurrent) 700 else 600, 13f),
+                                    color = when {
+                                        isCurrent -> Mk.NightText
+                                        enabled -> Mk.Ink
+                                        else -> Mk.Dashed
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            androidx.compose.material3.TextButton(onClick = onDismiss) {
+                Text("Cerrar", style = figtree(600, 14.5f), color = Mk.Olive)
+            }
+        }
+    )
 }

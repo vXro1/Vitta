@@ -95,6 +95,42 @@ object ProgressCalculator {
         )
     }
 
+    /**
+     * HAL-17: calendario de un mes completo, de lunes a domingo. Los huecos
+     * antes del día 1 y después del último día son null.
+     */
+    fun monthCells(history: ProgressHistory, month: java.time.YearMonth, today: LocalDate): List<HeatCell?> {
+        val first = month.atDay(1)
+        val last = month.atEndOfMonth()
+        val before = first.dayOfWeek.value - 1
+        val after = 7 - last.dayOfWeek.value
+        val days = (0 until month.lengthOfMonth()).map { offset -> heatCell(history, first.plusDays(offset.toLong()), today) }
+        return List(before) { null } + days + List(after) { null }
+    }
+
+    private fun heatCell(history: ProgressHistory, day: LocalDate, today: LocalDate): HeatCell {
+        val (done, scheduled) = dayTotals(history, day)
+        val level = when {
+            day.isAfter(today) -> -1
+            scheduled == 0 || done == 0 -> 0
+            done * 2 < scheduled -> 1
+            done < scheduled -> 2
+            else -> 3
+        }
+        val (hechos, faltantes) = history.habits.filter { isScheduled(it, day) }.partition { day in it.completedDays }
+        return HeatCell(
+            day, level, isToday = day == today, done = done, scheduled = scheduled,
+            habitsDone = hechos.map { DayHabit(it.id, it.name, it.notes[day]) },
+            habitsMissed = faltantes.map { DayHabit(it.id, it.name, it.notes[day]) }
+        )
+    }
+
+    /** Primer mes con datos: el más antiguo entre el inicio de los hábitos y sus días cumplidos. */
+    fun firstMonth(history: ProgressHistory, today: LocalDate): java.time.YearMonth {
+        val inicio = history.habits.mapNotNull { h -> listOfNotNull(h.startDate, h.completedDays.minOrNull()).minOrNull() }.minOrNull()
+        return java.time.YearMonth.from(inicio ?: today)
+    }
+
     /** Racha más larga de días consecutivos en [days]. */
     fun longestRun(days: Set<LocalDate>): Int {
         var best = 0

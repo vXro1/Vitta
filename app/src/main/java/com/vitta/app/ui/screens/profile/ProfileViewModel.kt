@@ -30,8 +30,13 @@ data class LogroUi(
     val esRacha: Boolean,
     /** Avance real del backend (`progreso_actual` / `progreso_meta`); null si el logro no lo informa. */
     val progresoActual: Int? = null,
-    val progresoMeta: Int? = null
+    val progresoMeta: Int? = null,
+    /** Descripción del logro (`GET /api/logros` → `descripcion`), para el detalle (HAL-19). */
+    val descripcion: String = ""
 ) {
+    /** Cuánto falta para obtenerlo (null si ya lo tiene o el backend no informa el progreso). */
+    val faltan: Int? get() = if (!obtenido && tieneProgreso) (progresoMeta!! - progresoActual!!).coerceAtLeast(0) else null
+
     /** true si hay datos reales para pintar la barra "3 de 7". */
     val tieneProgreso: Boolean get() = progresoActual != null && progresoMeta != null && progresoMeta > 0
 
@@ -136,7 +141,8 @@ private fun LogroDto.toUi(): LogroUi {
         insignia = insigniaPara(key),
         esRacha = key.startsWith("racha_"),
         progresoActual = progreso_actual,
-        progresoMeta = progreso_meta
+        progresoMeta = progreso_meta,
+        descripcion = descripcion
     )
 }
 

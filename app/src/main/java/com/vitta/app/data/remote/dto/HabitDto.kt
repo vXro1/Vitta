@@ -15,7 +15,10 @@ data class HabitDto(
     /** Clave del icono elegido (catálogo de la app, p. ej. "water"); la usan los logros por área. */
     val icono: String? = null,
     /** Área del hábito (p. ej. "Hidratación"); la usa el logro "En Equilibrio". */
-    val categoria: String? = null
+    val categoria: String? = null,
+    /** false = desactivado/archivado: conserva su historial pero no aparece en Inicio ni en Hoy. */
+    val activo: Boolean? = null,
+    val archivado_en: String? = null
 )
 
 /** POST /api/habits. Los campos opcionales nulos no se envían (Gson omite null). */

@@ -13,7 +13,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.vitta.app.data.mock.PredefinedHabit
-import com.vitta.app.data.mock.suggestedUnits
 import com.vitta.app.ui.components.auth.VittaAuthErrorBanner
 import com.vitta.app.ui.components.buttons.VittaPrimaryButton
 import com.vitta.app.ui.theme.VittaColorRoles
@@ -37,6 +36,7 @@ fun HabitConfigScreen(
         title = "Configura tu hábito",
         subtitle = "Hábito ${state.currentIndex + 1} de ${state.habits.size}",
         onBack = onBack,
+        hasChanges = state.hasChanges,
         bottomBar = {
             state.errorMessage?.let {
                 VittaAuthErrorBanner(it)
@@ -49,20 +49,19 @@ fun HabitConfigScreen(
                     else -> "Guardar y siguiente"
                 },
                 loading = state.isLoading,
+                enabled = state.canSave,
                 onClick = { viewModel.saveCurrentAndAdvance(onAllSaved) }
             )
         }
     ) {
+        // HAL-08: stepper con un paso por hábito (guardados con check, actual resaltado, pendientes en gris).
         if (state.habits.size > 1) {
-            LinearProgressIndicator(
-                progress = { (state.currentIndex + 1f) / state.habits.size },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(6.dp)
-                    .semantics { contentDescription = "Hábito ${state.currentIndex + 1} de ${state.habits.size}" },
-                color = VittaColorRoles.primary,
-                trackColor = VittaColorRoles.surfaceTint,
-                drawStopIndicator = {}
+            HabitStepper(
+                names = state.habits.map { it.nombre },
+                currentIndex = state.currentIndex,
+                completed = state.savedIndices,
+                onSelect = viewModel::goTo,
+                icons = state.habits.map { it.icon }
             )
         }
 
@@ -88,8 +87,7 @@ fun HabitConfigScreen(
                 onCantidadChange = viewModel::onMetaValorChange,
                 unidad = state.metaUnidad,
                 onUnidadChange = viewModel::onMetaUnidadChange,
-                unitSuggestions = (listOf(habit.metaUnidad) + suggestedUnits).distinct(),
-                step = HabitTextFormat.stepFor(state.metaUnidad),
+                units = com.vitta.app.ui.common.HabitUnits.paraHabito(habit.icon),
                 cantidadError = state.metaError,
                 unidadError = state.unidadError
             )
@@ -112,5 +110,9 @@ fun HabitConfigScreen(
         }
 
         HabitInfoNote("Cada vez que cumplas este hábito ganarás 10 VitaPuntos.")
+        HabitInfoNote(
+            "Al completarlo cada día podrás describir lo que hiciste. Esas notas quedan en tu bitácora " +
+                "y te ayudan a comprobar que de verdad cumples tu hábito."
+        )
     }
 }
