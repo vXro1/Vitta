@@ -12,6 +12,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
+import com.vitta.app.data.repository.DemoRepository
 import com.vitta.app.ui.components.buttons.VittaOutlinedButton
 import com.vitta.app.ui.theme.VittaColorRoles
 import com.vitta.app.ui.theme.VittaTextStyles
@@ -100,27 +101,30 @@ fun LoginScreen(
             enabled = !state.isDemoLoading
         )
 
-        Spacer(Modifier.height(VittaSpacing.Lg))
-        DemoDivider()
-        Spacer(Modifier.height(VittaSpacing.Lg))
+        // Demo solo en debug (en release no existe)
+        if (DemoRepository.disponible) {
+            Spacer(Modifier.height(VittaSpacing.Lg))
+            DemoDivider()
+            Spacer(Modifier.height(VittaSpacing.Lg))
 
-        VittaOutlinedButton(
-            text = if (state.isDemoLoading) "Preparando la demo…" else "Entrar con la cuenta demo",
-            onClick = {
-                focusManager.clearFocus()
-                viewModel.enterDemo(onSuccess = onLoginSuccess)
-            },
-            loading = state.isDemoLoading,
-            enabled = !state.isLoading,
-            icon = Icons.Outlined.PlayCircle
-        )
-        Text(
-            "Explora Vitta con hábitos y progreso de ejemplo, sin crear una cuenta.",
-            style = VittaTextStyles.bodySmall,
-            color = VittaColorRoles.textMuted,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth().padding(top = VittaSpacing.Sm)
-        )
+            VittaOutlinedButton(
+                text = if (state.isDemoLoading) "Preparando la demo…" else "Entrar con la cuenta demo",
+                onClick = {
+                    focusManager.clearFocus()
+                    viewModel.enterDemo(onSuccess = onLoginSuccess)
+                },
+                loading = state.isDemoLoading,
+                enabled = !state.isLoading,
+                icon = Icons.Outlined.PlayCircle
+            )
+            Text(
+                "Explora Vitta con hábitos y progreso de ejemplo, sin crear una cuenta.",
+                style = VittaTextStyles.bodySmall,
+                color = VittaColorRoles.textMuted,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth().padding(top = VittaSpacing.Sm)
+            )
+        }
 
         Spacer(Modifier.height(VittaSpacing.Xl))
 

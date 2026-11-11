@@ -65,9 +65,10 @@ npm install
 npm run dev                   # http://localhost:3000/api
 ```
 
-La app apunta a `http://10.0.2.2:3000/api/` (`data/remote/ApiClient.kt`),
-que es el `localhost` de tu PC visto desde el **emulador**. En un
-dispositivo físico cambia esa URL por la IP de tu PC en la red local.
+En debug la app apunta a `http://10.0.2.2:3000/api/`, que es el `localhost`
+de tu PC visto desde el **emulador**. En un dispositivo físico pon
+`vitta.debugBaseUrl=http://IP-DE-TU-PC:3000/api/` en `local.properties`
+(ver "URL del servidor" en README.md).
 
 ### App
 

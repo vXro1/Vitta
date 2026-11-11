@@ -13,3 +13,8 @@ local.properties
 # OS
 .DS_Store
 Thumbs.db
+
+# Firma del APK (nunca subir la llave ni sus claves)
+keystore.properties
+*.jks
+*.keystore

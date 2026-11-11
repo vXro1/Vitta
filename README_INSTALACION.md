@@ -81,8 +81,34 @@ Este comando fue verificado y produce `BUILD SUCCESSFUL` en este proyecto.
    depuración que aparece en el teléfono.
 4. Verifica que Android Studio (o `adb devices`) lo detecte, y presiona
    Run ▶ igual que con el emulador.
+5. El celular no ve `10.0.2.2`: pon la IP de tu PC en `local.properties`
+   (`vitta.debugBaseUrl=http://IP-DE-TU-PC:3000/api/`), con el celular y el
+   PC en la misma red.
 
-## 7. Problemas comunes
+## 7. APK de release firmado
+
+La llave (keystore) no está en el repo y no se debe subir. La crea una
+persona del equipo una sola vez y la guarda en un lugar seguro: si se
+pierde, no se pueden publicar actualizaciones de la app.
+
+1. Crear la llave (pide las contraseñas al ejecutarlo):
+   ```bash
+   keytool -genkeypair -v -keystore vitta-release.jks -alias vitta -keyalg RSA -keysize 2048 -validity 10000
+   ```
+2. Copiar el ejemplo y poner los datos de la llave:
+   ```bash
+   cp keystore.properties.example keystore.properties
+   ```
+3. Generar el APK firmado (con la URL del servidor real):
+   ```bash
+   ./gradlew assembleRelease -Pvitta.baseUrl=https://TU-SERVIDOR/api/
+   ```
+
+El APK queda en `app/build/outputs/apk/release/app-release.apk`.
+`keystore.properties`, `*.jks` y `*.keystore` están en `.gitignore`.
+Si no existe `keystore.properties`, `assembleRelease` genera el APK sin firmar.
+
+## 8. Problemas comunes
 
 **"SDK location not found" / Gradle no encuentra el SDK**
 Crea (o corrige) `local.properties` en la raíz del proyecto con:

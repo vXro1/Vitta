@@ -80,12 +80,14 @@ private fun momentoDe(card: HabitCardUiState): Momento {
 fun TodayScreen(
     viewModel: ChecklistViewModel,
     onAddHabit: () -> Unit,
-    onEditHabit: (Int) -> Unit,
+    /** HAL-09: tocar un hábito abre su avance; la edición está dentro (lápiz). */
+    onOpenHabit: (Int) -> Unit,
     onVerLogros: () -> Unit = {}
 ) {
     val state by viewModel.uiState.collectAsState()
     var undoTarget by remember { mutableStateOf<HabitCardUiState?>(null) }
     var noteTargetId by remember { mutableStateOf<Int?>(null) }
+    var amountTargetId by remember { mutableStateOf<Int?>(null) }
 
     Box(Modifier.fillMaxSize().background(Mk.Screen), contentAlignment = Alignment.TopCenter) {
         if (state.isLoading) {
@@ -194,7 +196,8 @@ fun TodayScreen(
                                 onUndo = { undoTarget = card },
                                 onAccion = { accionDe(card, viewModel) },
                                 onNote = { noteTargetId = card.habit.id },
-                                onEdit = { onEditHabit(card.habit.id) }
+                                onOpen = { onOpenHabit(card.habit.id) },
+                                onAmount = { amountTargetId = card.habit.id }
                             )
                         }
                     }
@@ -210,17 +213,18 @@ fun TodayScreen(
             )
         }
 
-        RachaSumadaDialog(state.rachaSumada, onDismiss = viewModel::dismissRachaSumada)
+        // Racha, VitaPuntos y medallas al completar un hábito desde esta pestaña (HAL-12, HAL-18).
+        CelebracionesOverlay(state = state, viewModel = viewModel, onVerLogros = onVerLogros)
+    }
 
-        // Medalla recién desbloqueada al completar un hábito desde esta pestaña.
-        LogroDesbloqueadoSheet(
-            logro = state.logroCelebrado,
-            onDismiss = viewModel::dismissCelebration,
-            onVerLogros = {
-                viewModel.dismissCelebration()
-                onVerLogros()
-            }
-        )
+    amountTargetId?.let { id ->
+        state.cards.find { it.habit.id == id }?.let { card ->
+            HabitAmountDialog(
+                card = card,
+                onConfirm = { cantidad -> viewModel.onAddAmount(id, cantidad); amountTargetId = null },
+                onDismiss = { amountTargetId = null }
+            )
+        }
     }
 
     undoTarget?.let { card ->
@@ -242,11 +246,7 @@ fun TodayScreen(
     }
 }
 
-private fun pasoDe(card: HabitCardUiState): Int = when {
-    card.metaUnidad.contains("paso") -> 1000
-    card.metaUnidad.contains("minuto") -> 5
-    else -> 1
-}
+private fun pasoDe(card: HabitCardUiState): Int = com.vitta.app.ui.common.HabitUnits.pasoRapido(card.metaUnidad)
 
 /** Texto de la acción de la derecha (mismo criterio que Inicio y el mockup). */
 private fun accionTexto(card: HabitCardUiState): String = when {
@@ -281,9 +281,11 @@ private fun FilaHabito(
     onUndo: () -> Unit,
     onAccion: () -> Unit,
     onNote: () -> Unit,
-    onEdit: () -> Unit
+    onOpen: () -> Unit,
+    onAmount: () -> Unit
 ) {
     val hecho = card.doneToday
+    val puedeEscribirCantidad = !hecho && card.metaTarget != null && !card.isSubmitting
     Column(
         Modifier
             .fillMaxWidth()
@@ -327,16 +329,28 @@ private fun FilaHabito(
                 colorFilter = VittaIconTint.habit
             )
             Spacer(Modifier.width(12.dp))
-            // Tocar el nombre abre la edición del hábito (igual que en Inicio).
-            Column(Modifier.weight(1f).clickable(onClickLabel = "Editar hábito", onClick = onEdit)) {
+            // HAL-09: tocar el nombre abre el avance del hábito (igual que en Inicio).
+            Column(Modifier.weight(1f)) {
                 Text(
                     card.habit.nombre,
                     style = figtree(600, 14.5f, 1.25f).copy(
                         textDecoration = if (hecho) TextDecoration.LineThrough else TextDecoration.None
                     ),
-                    color = if (hecho) Mk.SandText else Mk.Ink
+                    color = if (hecho) Mk.SandText else Mk.Ink,
+                    modifier = Modifier.clickable(onClickLabel = "Ver avance", onClick = onOpen)
                 )
-                Text(estadoDe(card), style = figtree(500, 12f), color = Mk.Muted, modifier = Modifier.padding(top = 2.dp))
+                // HAL-10: tocar el contador abre el campo para escribir la cantidad.
+                Text(
+                    estadoDe(card) + if (puedeEscribirCantidad) "  ✎" else "",
+                    style = figtree(if (puedeEscribirCantidad) 600 else 500, 12f),
+                    color = if (puedeEscribirCantidad) Mk.OliveDeep else Mk.Muted,
+                    modifier = Modifier
+                        .padding(top = 2.dp)
+                        .clickable(
+                            onClickLabel = if (puedeEscribirCantidad) "Escribir cantidad" else "Ver avance",
+                            onClick = if (puedeEscribirCantidad) onAmount else onOpen
+                        )
+                )
             }
             if (!hecho) {
                 Text(

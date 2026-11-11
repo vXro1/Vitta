@@ -67,8 +67,14 @@ fun RegisterScreen(
     }
     val fieldsEnabled = !state.isLoading && !state.justRegistered
 
+    // HAL-01: salir con datos escritos (atrás del sistema, flecha o "Inicia sesión") pide confirmación.
+    val exitRegister = com.vitta.app.ui.common.rememberExitGuard(
+        hasChanges = state.hasChanges,
+        onExit = onNavigateToLogin
+    )
+
     VittaAuthScaffold(
-        onBack = onNavigateToLogin,
+        onBack = exitRegister,
         backContentDescription = "Volver a iniciar sesión",
         overlay = {
             // Tarjeta de éxito flotante, aparece 1.6s y se navega sola.
@@ -192,7 +198,7 @@ fun RegisterScreen(
             text = if (state.isLoading) "Creando cuenta…" else "Crear cuenta",
             onClick = submit,
             loading = state.isLoading,
-            enabled = !state.justRegistered
+            enabled = !state.justRegistered && state.canSubmit
         )
 
         Spacer(Modifier.height(VittaSpacing.Lg))
@@ -200,7 +206,7 @@ fun RegisterScreen(
         VittaAuthFooterLink(
             question = "¿Ya tienes cuenta?",
             action = "Inicia sesión",
-            onClick = onNavigateToLogin
+            onClick = exitRegister
         )
     }
 }

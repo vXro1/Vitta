@@ -1,6 +1,7 @@
 package com.vitta.app.ui.screens.profile
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -16,6 +17,11 @@ import androidx.compose.material.icons.automirrored.outlined.PlaylistAdd
 import androidx.compose.material.icons.outlined.EmojiEvents
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.Edit
+import com.vitta.app.ui.components.mascot.MascotState as MS
+import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.automirrored.outlined.ListAlt
+import androidx.compose.material.icons.automirrored.outlined.MenuBook
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -69,6 +75,10 @@ fun ProfileScreen(
     onOpenHelp: () -> Unit,
     onLogout: () -> Unit,
     onOpenAchievements: () -> Unit = {},
+    onOpenMyHabits: () -> Unit = {},
+    onOpenJournal: () -> Unit = {},
+    onOpenNotifications: () -> Unit = {},
+    onOpenAccount: () -> Unit = {},
     viewModel: ProfileViewModel = viewModel()
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -85,6 +95,9 @@ fun ProfileScreen(
     val nombre = perfil?.nombre ?: userName
     val correo = perfil?.correo ?: userEmail
     val desde = perfil?.creado_en?.let { contigoDesde(it) }
+    var elegirAvatar by rememberSaveable { mutableStateOf(false) }
+    val avatar by com.vitta.app.data.local.AvatarStore.actual.collectAsState()
+    LaunchedEffect(correo) { com.vitta.app.data.local.AvatarStore.cargar(correo) }
 
     Box(Modifier.fillMaxSize().background(Mk.Screen), contentAlignment = Alignment.TopCenter) {
         // padding:16px 20px 24px
@@ -97,15 +110,33 @@ fun ProfileScreen(
         ) {
             // ---- Cabecera: display:flex;align-items:center;gap:16px ----
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    Modifier.size(84.dp).clip(CircleShape).background(Mk.Sand),
-                    contentAlignment = Alignment.BottomCenter
-                ) {
-                    VittaMascot(
-                        state = MascotState.GoodHabits,
-                        size = MascotSize.Small,
-                        modifier = Modifier.offset(y = 6.dp)
-                    )
+                // Foto de perfil: una de las ilustraciones de Vitta; tocarla permite cambiarla.
+                Box {
+                    Box(
+                        Modifier
+                            .size(84.dp)
+                            .clip(CircleShape)
+                            .background(Mk.Sand)
+                            .clickable(role = Role.Button, onClickLabel = "Cambiar foto de perfil") { elegirAvatar = true },
+                        contentAlignment = Alignment.BottomCenter
+                    ) {
+                        VittaMascot(
+                            state = avatar,
+                            size = MascotSize.Small,
+                            modifier = Modifier.offset(y = 6.dp)
+                        )
+                    }
+                    Box(
+                        Modifier
+                            .align(Alignment.BottomEnd)
+                            .size(28.dp)
+                            .clip(CircleShape)
+                            .background(Mk.OliveDeep)
+                            .clickable(role = Role.Button, onClickLabel = "Cambiar foto de perfil") { elegirAvatar = true },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Outlined.Edit, contentDescription = null, tint = Mk.NightText, modifier = Modifier.size(15.dp))
+                    }
                 }
                 Spacer(Modifier.width(16.dp))
                 Column(Modifier.weight(1f)) {
@@ -217,7 +248,43 @@ fun ProfileScreen(
                     onClick = onOpenAchievements
                 )
                 MenuDivider()
-                MenuRow(Icons.Outlined.Person, "Cuenta", trailing = correo?.ifBlank { null } ?: "—")
+                // HAL-13: lista de todos los hábitos con desactivar y eliminar.
+                MenuRow(
+                    Icons.AutoMirrored.Outlined.ListAlt,
+                    "Mis hábitos",
+                    trailing = perfil?.habitos_activos?.let { "$it activos" },
+                    chevron = true,
+                    onClickLabel = "Abrir mis hábitos",
+                    onClick = onOpenMyHabits
+                )
+                MenuDivider()
+                // HAL-15: todas las notas del día con filtro.
+                MenuRow(
+                    Icons.AutoMirrored.Outlined.MenuBook,
+                    "Bitácora",
+                    chevron = true,
+                    onClickLabel = "Abrir la bitácora",
+                    onClick = onOpenJournal
+                )
+                MenuDivider()
+                // HAL-20: recordatorios e historial de notificaciones.
+                MenuRow(
+                    Icons.Outlined.Notifications,
+                    "Notificaciones",
+                    chevron = true,
+                    onClickLabel = "Abrir notificaciones y recordatorios",
+                    onClick = onOpenNotifications
+                )
+                MenuDivider()
+                // Cambiar nombre, correo y contraseña.
+                MenuRow(
+                    Icons.Outlined.Person,
+                    "Cuenta",
+                    trailing = correo?.ifBlank { null } ?: "—",
+                    chevron = true,
+                    onClickLabel = "Editar nombre, correo y contraseña",
+                    onClick = onOpenAccount
+                )
                 MenuDivider()
                 MenuRow(
                     Icons.AutoMirrored.Outlined.HelpOutline,
@@ -247,12 +314,20 @@ fun ProfileScreen(
             }
 
             Text(
-                "Al eliminar un hábito se conserva el historial ya registrado. Los puntos y las medallas obtenidas no se retiran.",
+                "Al eliminar o desactivar un hábito (en Mis hábitos) se conserva el historial ya registrado. Los puntos y las medallas obtenidas no se retiran.",
                 style = figtree(400, 12.5f, 1.5f),
                 color = Mk.Muted,
                 modifier = Modifier.padding(start = 4.dp, end = 4.dp, top = 20.dp)
             )
         }
+    }
+
+    if (elegirAvatar) {
+        AvatarPicker(
+            actual = avatar,
+            onElegir = { com.vitta.app.data.local.AvatarStore.guardar(correo, it); elegirAvatar = false },
+            onDismiss = { elegirAvatar = false }
+        )
     }
 
     if (confirmLogout) {
@@ -368,3 +443,53 @@ private fun MenuRow(
 @Composable
 private fun MenuDivider() = HorizontalDivider(thickness = 1.dp, color = Mk.Divider)
 
+
+/** Elegir la foto de perfil entre las poses de Vitta que tiene la app. */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@Composable
+private fun AvatarPicker(actual: MS, onElegir: (MS) -> Unit, onDismiss: () -> Unit) {
+    androidx.compose.material3.ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        containerColor = Mk.Screen
+    ) {
+        Column(Modifier.padding(start = 20.dp, end = 20.dp, bottom = 28.dp)) {
+            Text("Elige tu Vitta", style = caprasimo(21f, 1.15f), color = Mk.Ink, modifier = Modifier.semantics { heading() })
+            Text(
+                "Será tu foto de perfil. Se guarda en este teléfono.",
+                style = figtree(500, 13f, 1.4f),
+                color = Mk.Muted,
+                modifier = Modifier.padding(top = 4.dp, bottom = 16.dp)
+            )
+            com.vitta.app.data.local.AvatarStore.opciones.chunked(3).forEach { fila ->
+                Row(Modifier.fillMaxWidth().padding(bottom = 12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    fila.forEach { (estado, nombre) ->
+                        val sel = estado == actual
+                        Column(
+                            Modifier
+                                .weight(1f)
+                                .clip(R24)
+                                .background(if (sel) Mk.OliveTile else Mk.Paper)
+                                .then(
+                                    if (sel) Modifier.border(2.dp, Mk.Olive, R24) else Modifier.border(1.dp, Mk.Dashed, R24)
+                                )
+                                .clickable(role = Role.RadioButton, onClickLabel = "Elegir $nombre") { onElegir(estado) }
+                                .padding(vertical = 12.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Box(Modifier.size(76.dp).clip(CircleShape).background(Mk.Sand), contentAlignment = Alignment.BottomCenter) {
+                                VittaMascot(state = estado, size = MascotSize.Small, modifier = Modifier.offset(y = 6.dp))
+                            }
+                            Text(
+                                nombre,
+                                style = figtree(if (sel) 700 else 600, 13f),
+                                color = if (sel) Mk.OliveDeep else Mk.Ink,
+                                modifier = Modifier.padding(top = 8.dp)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

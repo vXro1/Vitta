@@ -1,6 +1,9 @@
 package com.vitta.app.ui.screens.achievements
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -54,6 +57,7 @@ fun AchievementsScreen(viewModel: ProfileViewModel = viewModel()) {
 
     // Al abrir la pestaña se recargan para reflejar medallas recién ganadas.
     LaunchedEffect(Unit) { viewModel.cargarLogros() }
+    var detalle by remember { mutableStateOf<LogroUi?>(null) }
 
     Box(Modifier.fillMaxSize().background(Mk.Screen), contentAlignment = Alignment.TopCenter) {
         Column(
@@ -70,8 +74,11 @@ fun AchievementsScreen(viewModel: ProfileViewModel = viewModel()) {
                 modifier = Modifier.semantics { heading() }
             )
             Spacer(Modifier.height(8.dp))
-            LogrosSection(state, onRetry = viewModel::cargarLogros)
+            LogrosSection(state, onRetry = viewModel::cargarLogros, onOpen = { detalle = it })
         }
+
+        // HAL-19: al tocar una medalla se abre su detalle (último hijo del Box: el scrim solo cubre esta pantalla).
+        LogroDetalleSheet(logro = detalle, onDismiss = { detalle = null })
     }
 }
 
@@ -113,7 +120,7 @@ private fun PendientesStrip(pendientes: List<LogroUi>) {
 }
 
 @Composable
-private fun LogrosSection(state: ProfileUiState, onRetry: () -> Unit) {
+private fun LogrosSection(state: ProfileUiState, onRetry: () -> Unit, onOpen: (LogroUi) -> Unit) {
     when {
         state.cargandoLogros && state.logros.isEmpty() -> Box(
             Modifier.fillMaxWidth().padding(vertical = 24.dp),
@@ -148,19 +155,19 @@ private fun LogrosSection(state: ProfileUiState, onRetry: () -> Unit) {
             )
             val ultima = state.ultima
             val cercana = state.masCercana
-            if (ultima != null) UltimaMedallaCard(ultima)
+            if (ultima != null) UltimaMedallaCard(ultima, onOpen)
             else if (cercana != null) {
-                MasCercanaCard(cercana)
+                MasCercanaCard(cercana, onOpen)
                 PendientesStrip(state.logros.filter { !it.obtenido && it.id != cercana.id })
             }
 
             if (state.constancia.isNotEmpty()) {
                 SectionTitle("Constancia")
-                MedallasGrid(state.constancia)
+                MedallasGrid(state.constancia, onOpen)
             }
             if (state.areas.isNotEmpty()) {
                 SectionTitle("Áreas")
-                MedallasGrid(state.areas)
+                MedallasGrid(state.areas, onOpen)
             }
         }
     }
@@ -168,9 +175,11 @@ private fun LogrosSection(state: ProfileUiState, onRetry: () -> Unit) {
 
 /** Tarjeta oscura "Última medalla" (background:#2D403E;border-radius:28px;padding:20px;gap:16px). */
 @Composable
-private fun UltimaMedallaCard(logro: LogroUi) {
+private fun UltimaMedallaCard(logro: LogroUi, onOpen: (LogroUi) -> Unit) {
     Row(
-        Modifier.padding(top = 16.dp).fillMaxWidth().background(Mk.Night, R28).padding(20.dp),
+        Modifier.padding(top = 16.dp).fillMaxWidth().clip(R28).background(Mk.Night, R28)
+            .clickable(role = Role.Button, onClickLabel = "Ver detalle de ${logro.nombre}") { onOpen(logro) }
+            .padding(20.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         InsigniaImage(logro.insignia, bloqueada = false, size = 72.dp)
@@ -196,9 +205,10 @@ private fun UltimaMedallaCard(logro: LogroUi) {
 
 /** Estado vacío del mockup: "La más cercana" (background:#FFFCF8;border-radius:28px;padding:26px 22px). */
 @Composable
-private fun MasCercanaCard(logro: LogroUi) {
+private fun MasCercanaCard(logro: LogroUi, onOpen: (LogroUi) -> Unit) {
     Column(
-        Modifier.padding(top = 18.dp).fillMaxWidth().mockShadow(R28).background(Mk.Paper, R28)
+        Modifier.padding(top = 18.dp).fillMaxWidth().mockShadow(R28).clip(R28).background(Mk.Paper, R28)
+            .clickable(role = Role.Button, onClickLabel = "Ver detalle de ${logro.nombre}") { onOpen(logro) }
             .padding(horizontal = 22.dp, vertical = 26.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -222,11 +232,11 @@ private fun MasCercanaCard(logro: LogroUi) {
 
 /** display:grid;grid-template-columns:repeat(2,1fr);gap:11px */
 @Composable
-private fun MedallasGrid(logros: List<LogroUi>) {
+private fun MedallasGrid(logros: List<LogroUi>, onOpen: (LogroUi) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(11.dp)) {
         logros.chunked(2).forEach { fila ->
             Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(11.dp)) {
-                fila.forEach { MedallaCard(it, Modifier.weight(1f)) }
+                fila.forEach { MedallaCard(it, Modifier.weight(1f), onOpen) }
                 if (fila.size == 1) Spacer(Modifier.weight(1f))
             }
         }
@@ -235,13 +245,15 @@ private fun MedallasGrid(logros: List<LogroUi>) {
 
 /** Tarjeta `medalla()` del mockup. */
 @Composable
-private fun MedallaCard(logro: LogroUi, modifier: Modifier) {
+private fun MedallaCard(logro: LogroUi, modifier: Modifier, onOpen: (LogroUi) -> Unit) {
     val on = logro.obtenido
     Column(
         modifier
             .fillMaxHeight()
             .then(if (on) Modifier.mockShadow(R24) else Modifier)
+            .clip(R24)
             .background(if (on) Mk.Paper else Mk.SandSoft, R24)
+            .clickable(role = Role.Button, onClickLabel = "Ver detalle de ${logro.nombre}") { onOpen(logro) }
             .padding(horizontal = 15.dp, vertical = 16.dp)
             .semantics(mergeDescendants = true) {},
         horizontalAlignment = Alignment.CenterHorizontally
@@ -317,3 +329,73 @@ private fun enPalabras(n: Int, mayuscula: Boolean = false): String {
     val s = palabras.getOrNull(n) ?: n.toString()
     return if (mayuscula) s.replaceFirstChar { it.uppercase() } else s
 }
+
+/**
+ * Detalle de una medalla (HAL-19): qué hay que hacer, la descripción, el
+ * avance real y cuánto falta, con los datos de `GET /api/logros`.
+ */
+@Composable
+private fun LogroDetalleSheet(logro: LogroUi?, onDismiss: () -> Unit) {
+    // Conserva el último logro mientras dura la animación de salida.
+    var last by remember { mutableStateOf<LogroUi?>(null) }
+    LaunchedEffect(logro) { if (logro != null) last = logro }
+    val current = logro ?: last ?: return
+
+    com.vitta.app.ui.components.feedback.VittaRewardSheet(
+        visible = logro != null,
+        area = if (current.obtenido) "MEDALLA OBTENIDA" else "MEDALLA PENDIENTE",
+        title = current.nombre,
+        description = current.descripcion.ifBlank { current.condicion },
+        onDismiss = onDismiss,
+        mascot = { InsigniaImage(current.insignia, bloqueada = !current.obtenido, size = 84.dp) }
+    ) {
+        DetalleFila("Qué hay que hacer", current.condicion)
+        DetalleFila(
+            "Con qué hábitos",
+            if (current.esRacha) "Con cualquiera de tus hábitos: cuenta tu racha de días seguidos."
+            else "Con los hábitos de esta área: ${current.condicion.lowercase()}."
+        )
+        if (current.tieneProgreso) {
+            Column(
+                Modifier.fillMaxWidth().background(Mk.SandSoft, R24).padding(horizontal = 16.dp, vertical = 14.dp)
+            ) {
+                Text("Tu avance", style = figtree(600, 12f), color = Mk.Muted)
+                MedallaProgreso(current, Modifier.padding(top = 8.dp))
+                Text(
+                    when {
+                        current.obtenido -> "¡Completada!"
+                        current.faltan == 1 -> "Te falta 1 para conseguirla."
+                        else -> "Te faltan ${current.faltan} para conseguirla."
+                    },
+                    style = figtree(600, 13f),
+                    color = if (current.obtenido) Mk.OliveDeep else Mk.Ink,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+            }
+        }
+        current.obtenidoEn?.let { iso ->
+            fechaObtenida(iso)?.let { DetalleFila("Obtenida", it) }
+        }
+        Row(
+            Modifier.background(Mk.AmberTile, Pill).padding(horizontal = 15.dp, vertical = 7.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("+${current.puntosBonus}", style = caprasimo(14f, 1.2f), color = Mk.AmberInk)
+            Spacer(Modifier.width(7.dp))
+            Text("VitaPuntos al obtenerla", style = figtree(600, 12.5f), color = Mk.AmberDeep)
+        }
+    }
+}
+
+@Composable
+private fun DetalleFila(titulo: String, texto: String) {
+    Column(Modifier.fillMaxWidth()) {
+        Text(titulo, style = figtree(600, 12f), color = Mk.Muted)
+        Text(texto, style = figtree(500, 14f, 1.45f), color = Mk.Ink, modifier = Modifier.padding(top = 2.dp))
+    }
+}
+
+private fun fechaObtenida(iso: String): String? = runCatching {
+    val f = java.time.Instant.parse(iso).atZone(java.time.ZoneId.systemDefault()).toLocalDate()
+    f.format(java.time.format.DateTimeFormatter.ofPattern("d 'de' MMMM 'de' yyyy", java.util.Locale("es", "ES")))
+}.getOrNull()

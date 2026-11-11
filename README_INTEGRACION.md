@@ -125,7 +125,8 @@ git checkout veronica
 ```
 
 En el login, **"Entrar con la cuenta demo"** crea `demo@vitta.test`
-(contraseña `Vitta2026!`) con 4 hábitos y unas semanas de historial.
+con 4 hábitos y unas semanas de historial. Solo aparece en debug y si
+`vitta.demoPassword` está en `local.properties` (ver README.md).
 
 Checklist sugerido:
 

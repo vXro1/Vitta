@@ -29,6 +29,11 @@ import com.vitta.app.ui.screens.home.FirstHabitTeaserScreen
 import com.vitta.app.ui.screens.home.MainScreen
 import com.vitta.app.ui.screens.onboarding.OnboardingScreen
 import com.vitta.app.ui.screens.profile.HelpScreen
+import com.vitta.app.ui.screens.account.AccountScreen
+import com.vitta.app.ui.screens.habits.HabitDetailScreen
+import com.vitta.app.ui.screens.journal.JournalScreen
+import com.vitta.app.ui.screens.myhabits.MyHabitsScreen
+import com.vitta.app.ui.screens.notifications.NotificationsScreen
 import com.vitta.app.ui.theme.VittaColorRoles
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -46,8 +51,15 @@ object VittaRoutes {
     const val EditHabit = "edit_habit/{habitId}"
     const val Home = "home" // Inicio, Hoy, Progreso, Logros y Yo
     const val Help = "help" // Yo → Ayuda
+    const val HabitDetail = "habit_detail/{habitId}" // HAL-09: avance del hábito
+    const val MyHabits = "my_habits" // HAL-13
+    const val Journal = "journal?habitId={habitId}" // HAL-14 (por hábito) y HAL-15 (general)
+    const val Notifications = "notifications" // HAL-20
+    const val Account = "account" // Yo → Cuenta
 
     fun editHabit(habitId: Int) = "edit_habit/$habitId"
+    fun habitDetail(habitId: Int) = "habit_detail/$habitId"
+    fun journal(habitId: Int? = null) = if (habitId == null) "journal" else "journal?habitId=$habitId"
 }
 
 /** Clave en el SavedStateHandle de Home para pedir que recargue al volver. */
@@ -215,10 +227,13 @@ fun VittaNavHost(
             EditHabitScreen(
                 habitId = habitId,
                 onSaved = {
-                    navController.previousBackStackEntry?.savedStateHandle?.let { handle ->
-                        handle[RefreshHomeKey] = (handle.get<Int>(RefreshHomeKey) ?: 0) + 1
-                    }
+                    requestHomeRefresh(navController)
                     navController.popBackStack()
+                },
+                // Eliminado o archivado: su vista de avance ya no aplica, se vuelve a Inicio.
+                onDeleted = {
+                    requestHomeRefresh(navController)
+                    if (!navController.popBackStack(VittaRoutes.Home, inclusive = false)) navController.popBackStack()
                 },
                 onBack = { navController.popBackStack() }
             )
@@ -226,6 +241,45 @@ fun VittaNavHost(
 
         composable(VittaRoutes.Help) {
             HelpScreen(onBack = { navController.popBackStack() })
+        }
+
+        // HAL-09: avance del hábito; Editar queda en el lápiz de esta vista.
+        composable(
+            route = VittaRoutes.HabitDetail,
+            arguments = listOf(navArgument("habitId") { type = NavType.IntType })
+        ) { entry ->
+            val habitId = entry.arguments?.getInt("habitId") ?: return@composable
+            HabitDetailScreen(
+                habitId = habitId,
+                onBack = { navController.popBackStack() },
+                onEdit = { navController.navigate(VittaRoutes.editHabit(habitId)) },
+                onOpenLog = { navController.navigate(VittaRoutes.journal(habitId)) }
+            )
+        }
+
+        composable(VittaRoutes.MyHabits) {
+            MyHabitsScreen(
+                onBack = { navController.popBackStack() },
+                onOpenHabit = { id -> navController.navigate(VittaRoutes.habitDetail(id)) },
+                onOpenLog = { id -> navController.navigate(VittaRoutes.journal(id)) },
+                onChanged = { requestHomeRefresh(navController) }
+            )
+        }
+
+        composable(
+            route = VittaRoutes.Journal,
+            arguments = listOf(navArgument("habitId") { type = NavType.IntType; defaultValue = -1 })
+        ) { entry ->
+            val habitId = entry.arguments?.getInt("habitId")?.takeIf { it > 0 }
+            JournalScreen(habitId = habitId, onBack = { navController.popBackStack() })
+        }
+
+        composable(VittaRoutes.Notifications) {
+            NotificationsScreen(onBack = { navController.popBackStack() })
+        }
+
+        composable(VittaRoutes.Account) {
+            AccountScreen(onBack = { navController.popBackStack() })
         }
 
         composable(VittaRoutes.Home) { entry ->
@@ -242,10 +296,16 @@ fun VittaNavHost(
                 userEmail = userEmail,
                 refreshRequests = refresh,
                 onAddHabit = { navController.navigate(VittaRoutes.HabitSelection) },
-                onEditHabit = { id -> navController.navigate(VittaRoutes.editHabit(id)) },
+                onOpenHabit = { id -> navController.navigate(VittaRoutes.habitDetail(id)) },
                 onOpenHelp = { navController.navigate(VittaRoutes.Help) },
+                onOpenMyHabits = { navController.navigate(VittaRoutes.MyHabits) },
+                onOpenJournal = { navController.navigate(VittaRoutes.journal()) },
+                onOpenNotifications = { navController.navigate(VittaRoutes.Notifications) },
+                onOpenAccount = { navController.navigate(VittaRoutes.Account) },
                 onLogout = {
                     scope.launch {
+                        // Sin sesión no hay a quién recordarle: se cancelan las alarmas locales.
+                        com.vitta.app.data.reminders.ReminderScheduler.clear()
                         tokenManager.clearToken()
                         navController.navigate(VittaRoutes.Login) { popUpTo(0) }
                     }
@@ -253,6 +313,12 @@ fun VittaNavHost(
             )
         }
     }
+}
+
+/** Pide a Inicio que recargue los hábitos cuando se vuelva a mostrar. */
+private fun requestHomeRefresh(navController: NavHostController) {
+    val home = runCatching { navController.getBackStackEntry(VittaRoutes.Home) }.getOrNull() ?: return
+    home.savedStateHandle[RefreshHomeKey] = (home.savedStateHandle.get<Int>(RefreshHomeKey) ?: 0) + 1
 }
 
 @Composable

@@ -1,8 +1,40 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
 }
+
+// URL del backend para release: primero -Pvitta.baseUrl=..., luego
+// vitta.baseUrl en local.properties. Si no hay ninguna queda el placeholder.
+val localProps = Properties().apply {
+    val f = rootProject.file("local.properties")
+    if (f.exists()) f.inputStream().use { load(it) }
+}
+val releaseBaseUrl: String = (project.findProperty("vitta.baseUrl") as String?)
+    ?: localProps.getProperty("vitta.baseUrl")
+    ?: "https://CAMBIAR-URL/api/"
+
+// URL para debug. Por defecto el emulador (10.0.2.2 = localhost del PC).
+// Para un celular físico se pone vitta.debugBaseUrl=http://IP-DEL-PC:3000/api/
+val debugBaseUrl: String = (project.findProperty("vitta.debugBaseUrl") as String?)
+    ?: localProps.getProperty("vitta.debugBaseUrl")
+    ?: "http://10.0.2.2:3000/api/"
+
+// Datos para firmar el APK de release. Están en keystore.properties (no se sube
+// a git, ver keystore.properties.example). Si el archivo no existe el release
+// sale sin firmar.
+val keystoreFile = rootProject.file("keystore.properties")
+val keystoreProps = Properties().apply {
+    if (keystoreFile.exists()) keystoreFile.inputStream().use { load(it) }
+}
+
+// Contraseña de la cuenta demo (solo debug). No va en el código: se pone
+// vitta.demoPassword en local.properties. Sin ella el botón Demo no aparece.
+val demoPassword: String = (project.findProperty("vitta.demoPassword") as String?)
+    ?: localProps.getProperty("vitta.demoPassword")
+    ?: ""
 
 android {
     namespace = "com.vitta.app"
@@ -20,8 +52,32 @@ android {
         }
     }
 
+    signingConfigs {
+        create("release") {
+            if (keystoreFile.exists()) {
+                storeFile = rootProject.file(keystoreProps.getProperty("storeFile"))
+                storePassword = keystoreProps.getProperty("storePassword")
+                keyAlias = keystoreProps.getProperty("keyAlias")
+                keyPassword = keystoreProps.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
+        debug {
+            buildConfigField("String", "BASE_URL", "\"$debugBaseUrl\"")
+            manifestPlaceholders["usesCleartext"] = "true"
+            buildConfigField("String", "DEMO_PASSWORD", "\"$demoPassword\"")
+        }
         release {
+            buildConfigField("String", "BASE_URL", "\"$releaseBaseUrl\"")
+            // en release solo HTTPS
+            manifestPlaceholders["usesCleartext"] = "false"
+            // la cuenta demo no existe en release
+            buildConfigField("String", "DEMO_PASSWORD", "\"\"")
+            if (keystoreFile.exists()) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -41,6 +97,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     packaging {

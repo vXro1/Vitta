@@ -16,7 +16,6 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.vitta.app.data.mock.suggestedUnits
 import com.vitta.app.ui.components.auth.VittaAuthErrorBanner
 import com.vitta.app.ui.components.buttons.VittaPrimaryButton
 import com.vitta.app.ui.components.forms.VittaAuthTextField
@@ -41,6 +40,7 @@ fun CustomHabitScreen(
         title = "Nuevo hábito",
         subtitle = "Créalo a tu medida en 5 pasos",
         onBack = onBack,
+        hasChanges = state.hasChanges,
         bottomBar = {
             state.errorMessage?.let {
                 VittaAuthErrorBanner(it)
@@ -49,6 +49,8 @@ fun CustomHabitScreen(
             VittaPrimaryButton(
                 text = if (state.isLoading) "Guardando…" else "Guardar hábito",
                 loading = state.isLoading,
+                // HAL-05: bloqueado mientras el nombre no cumpla la regla.
+                enabled = state.canSave,
                 onClick = {
                     focusManager.clearFocus()
                     viewModel.save(onSaved)
@@ -84,8 +86,7 @@ fun CustomHabitScreen(
                 onCantidadChange = viewModel::onMetaValorChange,
                 unidad = state.metaUnidad,
                 onUnidadChange = viewModel::onMetaUnidadChange,
-                unitSuggestions = suggestedUnits,
-                step = HabitTextFormat.stepFor(state.metaUnidad),
+                units = com.vitta.app.ui.common.HabitUnits.paraHabito(state.icon),
                 cantidadError = state.metaError,
                 unidadError = state.unidadError
             )
@@ -108,6 +109,11 @@ fun CustomHabitScreen(
         }
 
         HabitInfoNote("Cada vez que cumplas este hábito ganarás 10 VitaPuntos.")
+        // Recordatorio de la descripción del día: ayuda a comprobar que de verdad se cumple.
+        HabitInfoNote(
+            "Al completarlo cada día podrás describir lo que hiciste (por ejemplo, qué leíste o cuánto caminaste). " +
+                "Esas notas quedan en tu bitácora y te ayudan a comprobar que de verdad cumples tu hábito."
+        )
     }
 }
 
@@ -126,16 +132,23 @@ fun HabitFormScaffold(
     title: String,
     onBack: () -> Unit,
     subtitle: String? = null,
+    /** Con cambios sin guardar, salir (flecha o atrás del sistema) pide confirmación (HAL-04). */
+    hasChanges: Boolean = false,
     bottomBar: @Composable ColumnScope.() -> Unit,
     content: @Composable ColumnScope.() -> Unit
 ) {
+    val exit = com.vitta.app.ui.common.rememberExitGuard(
+        hasChanges = hasChanges,
+        onExit = onBack,
+        stayLabel = "Seguir con el hábito"
+    )
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(VittaColorRoles.background)
             .imePadding()
     ) {
-        HabitScreenHeader(title = title, subtitle = subtitle, onBack = onBack)
+        HabitScreenHeader(title = title, subtitle = subtitle, onBack = exit)
 
         Box(
             modifier = Modifier

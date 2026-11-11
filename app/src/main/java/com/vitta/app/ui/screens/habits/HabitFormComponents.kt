@@ -500,8 +500,10 @@ fun vittaTextFieldColors() = OutlinedTextFieldDefaults.colors(
 
 /**
  * Meta separada en dos conceptos: **Cantidad** (número, con − / + o
- * escribiéndolo) y **Unidad** (texto libre con sugerencias). En el backend
- * se guardan juntas en `habitos.meta` como "30 minutos".
+ * escribiéndolo) y **Unidad**. La unidad ya no es texto libre (HAL-06): se
+ * elige de la lista cerrada de unidades que tienen sentido para el hábito
+ * (HAL-07) y la cantidad no puede pasar el máximo de esa unidad. En el
+ * backend se guardan juntas en `habitos.meta` como "30 minutos".
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -510,12 +512,14 @@ fun HabitGoalInput(
     onCantidadChange: (Int) -> Unit,
     unidad: String,
     onUnidadChange: (String) -> Unit,
-    unitSuggestions: List<String>,
+    units: List<com.vitta.app.ui.common.HabitUnit>,
     modifier: Modifier = Modifier,
-    step: Int = 1,
     cantidadError: String? = null,
     unidadError: String? = null
 ) {
+    val unidadActual = units.firstOrNull { it.nombre.equals(unidad.trim(), ignoreCase = true) }
+    val step = unidadActual?.paso ?: 1
+    val max = unidadActual?.max
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -564,39 +568,38 @@ fun HabitGoalInput(
             StepperButton(
                 icon = Icons.Filled.Add,
                 description = "Aumentar cantidad",
-                enabled = true,
+                enabled = max == null || cantidad < max,
                 filled = true,
-                onClick = { onCantidadChange(cantidad + step) }
+                onClick = { onCantidadChange(if (max == null) cantidad + step else minOf(cantidad + step, max)) }
             )
         }
         if (cantidadError != null) FieldError(cantidadError)
+        else if (max != null) {
+            Text(
+                "Máximo $max ${unidadActual?.nombre.orEmpty()}",
+                style = VittaTextStyles.bodySmall,
+                color = VittaColorRoles.textMuted,
+                modifier = Modifier.padding(top = VittaSpacing.Xs)
+            )
+        }
 
         Spacer(Modifier.height(VittaSpacing.Lg))
         Text("Unidad", style = VittaTextStyles.subtitle, color = VittaColorRoles.textPrimary)
-        Spacer(Modifier.height(VittaSpacing.Sm))
-        OutlinedTextField(
-            value = unidad,
-            onValueChange = { onUnidadChange(it.take(30)) },
-            modifier = Modifier
-                .fillMaxWidth()
-                .semantics { contentDescription = "Unidad" },
-            singleLine = true,
-            isError = unidadError != null,
-            placeholder = { Text("Ej: minutos, vasos, páginas", style = VittaTextStyles.body) },
-            textStyle = VittaTextStyles.body.copy(fontSize = VittaTextStyles.subtitle.fontSize),
-            shape = VittaShapes.medium,
-            colors = vittaTextFieldColors()
+        Text(
+            "Solo las que tienen sentido para este hábito.",
+            style = VittaTextStyles.bodySmall,
+            color = VittaColorRoles.textMuted
         )
-        if (unidadError != null) FieldError(unidadError)
         Spacer(Modifier.height(VittaSpacing.Sm))
         FlowRow(
             horizontalArrangement = Arrangement.spacedBy(VittaSpacing.Sm),
             verticalArrangement = Arrangement.spacedBy(VittaSpacing.Xs)
         ) {
-            unitSuggestions.forEach { u ->
-                VittaFilterChip(u, selected = unidad.trim().equals(u, ignoreCase = true)) { onUnidadChange(u) }
+            units.forEach { u ->
+                VittaFilterChip(u.nombre, selected = unidadActual == u) { onUnidadChange(u.nombre) }
             }
         }
+        if (unidadError != null) FieldError(unidadError)
 
         Spacer(Modifier.height(VittaSpacing.Md))
         Text(
@@ -905,6 +908,176 @@ fun VittaTimePickerDialog(
                         onClick = { onConfirm(LocalTime.of(state.hour, state.minute)) },
                         colors = ButtonDefaults.textButtonColors(contentColor = VittaColorRoles.primaryPressed)
                     ) { Text("Aceptar", style = VittaTextStyles.button) }
+                }
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Stepper de varios hábitos (HAL-08)
+// ---------------------------------------------------------------------------
+
+/**
+ * Stepper horizontal y llamativo con un paso por hábito: los guardados con
+ * check verde, el actual grande y resaltado con su icono, y los pendientes
+ * en gris con su número. Arriba, "Hábito X de N" y una barra de avance.
+ * Tocar un hábito pendiente lleva directo a él.
+ */
+@Composable
+fun HabitStepper(
+    names: List<String>,
+    currentIndex: Int,
+    completed: Set<Int>,
+    onSelect: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+    icons: List<HabitIcon> = emptyList()
+) {
+    val total = names.size
+    val hechos = completed.size
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(VittaColorRoles.surfaceTint, VittaShapes.large)
+            .border(1.5.dp, VittaColors.GreenPale, VittaShapes.large)
+            .padding(vertical = VittaSpacing.Lg)
+    ) {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = VittaSpacing.Lg),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    "Hábito ${currentIndex + 1} de $total",
+                    style = VittaTextStyles.title,
+                    color = VittaColorRoles.textPrimary
+                )
+                Text(
+                    if (hechos == 0) "Configura cada uno y guárdalo" else "$hechos guardado${if (hechos == 1) "" else "s"} · faltan ${total - hechos}",
+                    style = VittaTextStyles.bodySmall,
+                    color = VittaColorRoles.primaryPressed
+                )
+            }
+            Text(
+                "${(hechos * 100) / total.coerceAtLeast(1)}%",
+                style = VittaTextStyles.heading,
+                color = VittaColorRoles.primaryPressed
+            )
+        }
+        // Barra de avance del flujo.
+        Box(
+            Modifier
+                .padding(horizontal = VittaSpacing.Lg, vertical = VittaSpacing.Sm)
+                .fillMaxWidth()
+                .height(6.dp)
+                .clip(CircleShape)
+                .background(VittaColorRoles.surface)
+        ) {
+            Box(
+                Modifier
+                    .fillMaxHeight()
+                    .fillMaxWidth(((hechos + 0.5f) / total.coerceAtLeast(1)).coerceIn(0f, 1f))
+                    .background(VittaColorRoles.primary, CircleShape)
+            )
+        }
+        LazyRow(
+            modifier = Modifier.fillMaxWidth().padding(top = VittaSpacing.Xs),
+            contentPadding = PaddingValues(horizontal = VittaSpacing.Lg),
+            verticalAlignment = Alignment.Top
+        ) {
+            items(total) { index ->
+                val done = index in completed
+                val current = index == currentIndex
+                val enabled = !done && !current
+                val tam = if (current) 60.dp else 46.dp
+                Row(verticalAlignment = Alignment.Top) {
+                    Column(
+                        modifier = Modifier
+                            .width(88.dp)
+                            .clip(VittaShapes.medium)
+                            .then(
+                                if (enabled) Modifier.clickable(role = Role.Button, onClickLabel = "Ir a ${names[index]}") { onSelect(index) }
+                                else Modifier
+                            )
+                            .padding(vertical = VittaSpacing.Xxs)
+                            .semantics(mergeDescendants = true) {
+                                contentDescription = "Hábito ${index + 1} de $total: ${names[index]}" +
+                                    when { done -> ", guardado"; current -> ", actual"; else -> ", pendiente" }
+                            },
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Box(Modifier.height(60.dp), contentAlignment = Alignment.Center) {
+                            Box(
+                                modifier = Modifier
+                                    .size(tam)
+                                    .clip(CircleShape)
+                                    .background(
+                                        when {
+                                            done -> VittaColorRoles.primaryStrong
+                                            current -> VittaColorRoles.surface
+                                            else -> VittaColorRoles.surfaceMuted
+                                        }
+                                    )
+                                    .border(
+                                        if (current) 3.dp else 1.dp,
+                                        when {
+                                            current -> VittaColorRoles.primary
+                                            done -> VittaColorRoles.primaryStrong
+                                            else -> VittaColorRoles.border
+                                        },
+                                        CircleShape
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                when {
+                                    done -> Icon(Icons.Filled.Check, contentDescription = null, tint = VittaColorRoles.onPrimary, modifier = Modifier.size(24.dp))
+                                    current && icons.getOrNull(index) != null -> Image(
+                                        painter = painterResource(icons[index].drawable),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(32.dp),
+                                        colorFilter = com.vitta.app.ui.theme.VittaIconTint.habit
+                                    )
+                                    else -> Text(
+                                        "${index + 1}",
+                                        style = VittaTextStyles.title,
+                                        color = if (current) VittaColorRoles.primaryPressed else VittaColorRoles.textMuted
+                                    )
+                                }
+                            }
+                        }
+                        Spacer(Modifier.height(VittaSpacing.Xs))
+                        Text(
+                            names[index],
+                            style = if (current) VittaTextStyles.subtitle else VittaTextStyles.bodySmall,
+                            color = when {
+                                current -> VittaColorRoles.primaryPressed
+                                done -> VittaColorRoles.textPrimary
+                                else -> VittaColorRoles.textMuted
+                            },
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            textAlign = TextAlign.Center
+                        )
+                        Text(
+                            when { done -> "Guardado"; current -> "Ahora"; else -> "Pendiente" },
+                            style = VittaTextStyles.caption,
+                            color = when {
+                                done -> VittaColorRoles.primaryPressed
+                                current -> VittaColors.OrangeAccent
+                                else -> VittaColorRoles.textDisabled
+                            }
+                        )
+                    }
+                    if (index < total - 1) {
+                        Box(
+                            Modifier
+                                .padding(top = 29.dp)
+                                .width(20.dp)
+                                .height(3.dp)
+                                .clip(CircleShape)
+                                .background(if (done) VittaColorRoles.primaryStrong else VittaColorRoles.border)
+                        )
+                    }
                 }
             }
         }

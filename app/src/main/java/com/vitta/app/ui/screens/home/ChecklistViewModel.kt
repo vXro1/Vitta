@@ -91,7 +91,16 @@ data class RachaPerdidaUi(
 /** Modal "¡Felicitaciones!" al sumar un nuevo día a la racha del usuario. */
 data class RachaSumadaUi(
     /** Racha real del usuario tras el registro (la misma "N días de racha" de Inicio). */
-    val dias: Int
+    val dias: Int,
+    /** VitaPuntos del mismo registro: van en este modal para no abrir otro (HAL-12/HAL-18). */
+    val puntos: Int? = null
+)
+
+/** Modal de felicitación por VitaPuntos al completar un hábito (HAL-12, antes era un toast). */
+data class PuntosGanadosUi(
+    val habito: String,
+    /** Diferencia real de `puntos_totales` (`GET /api/dashboard`) antes/después; null si no se pudo leer. */
+    val puntos: Int?
 )
 
 /** Límite del backend para `notas` (validation.ts → NOTAS_MAX). */
@@ -110,7 +119,15 @@ data class ChecklistUiState(
     val puntos: UserPointsDto? = null,
     val rachaPerdida: RachaPerdidaUi? = null,
     val rachaSumada: RachaSumadaUi? = null,
-    /** Mensaje breve para el snackbar ("¡Leer listo! +10 VitaPuntos", "Nota guardada"). */
+    val puntosGanados: PuntosGanadosUi? = null,
+    /** HAL-18: si llegan más de dos medallas juntas se muestra un solo resumen ("Ganaste 3 logros"). */
+    val logrosResumen: List<LogroDto>? = null,
+    /**
+     * Hábito recién completado: se ofrece (opcional) escribir la nota del día.
+     * El hábito ya quedó registrado; las celebraciones esperan a que se cierre.
+     */
+    val notaSugerida: Int? = null,
+    /** Mensaje breve para el snackbar ("Nota guardada", "Registro deshecho"). */
     val message: String? = null
 ) {
     val todayCards: List<HabitCardUiState> get() = cards.filter { it.scheduledToday }
@@ -120,11 +137,7 @@ data class ChecklistUiState(
     val bestStreakEver: Int get() = cards.maxOfOrNull { maxOf(it.streakMax, it.streakActual) } ?: 0
 }
 
-private fun stepFor(unidad: String): Int = when {
-    unidad.contains("paso") -> 1000
-    unidad.contains("minuto") -> 5
-    else -> 1
-}
+private fun stepFor(unidad: String): Int = com.vitta.app.ui.common.HabitUnits.pasoRapido(unidad)
 
 /** Día local: el backend asigna cada registro al día de la zona que envía la app (X-Timezone). */
 private fun today(): LocalDate = LocalDate.now(ZoneId.systemDefault())
@@ -168,8 +181,11 @@ class ChecklistViewModel(
             val dashboardCall = async { userRepository.getDashboard() }
             when (val habitsResult = repository.listHabits()) {
                 is HabitsResult.Success -> {
-                    val horas = (remindersCall.await() as? RemindersResult.Success)?.reminders
-                        ?.filter { it.activo }?.associate { it.habito_id to it.hora }.orEmpty()
+                    val reminders = (remindersCall.await() as? RemindersResult.Success)?.reminders
+                    // HAL-20: las alarmas locales siguen lo que está guardado en `/api/recordatorios`.
+                    if (reminders != null) com.vitta.app.data.reminders.ReminderScheduler.sync(reminders, habitsResult.habits)
+                    // La hora ubica el hábito en Hoy aunque el aviso esté pausado.
+                    val horas = reminders?.associate { it.habito_id to it.hora }.orEmpty()
                     val cards = coroutineScope {
                         habitsResult.habits.map { habit -> async { buildCard(habit, horas[habit.id]) } }.awaitAll()
                     }
@@ -354,6 +370,17 @@ class ChecklistViewModel(
         setProgress(habitId, card.pendingValue + stepFor(card.metaUnidad))
     }
 
+    /**
+     * HAL-10: suma la cantidad que el usuario escribió (p. ej. 45 minutos). El
+     * backend recibe el total del día; quien llama ya validó que sea positiva
+     * y no supere el máximo por registro.
+     */
+    fun onAddAmount(habitId: Int, amount: Int) {
+        val card = card(habitId) ?: return
+        if (amount <= 0) return
+        setProgress(habitId, card.pendingValue + amount)
+    }
+
     /** Círculo de la pestaña Hoy: cierra el hábito de una vez (meta completa o "Listo"). */
     fun onComplete(habitId: Int) {
         val card = card(habitId) ?: return
@@ -523,7 +550,9 @@ class ChecklistViewModel(
                         completedDays = it.completedDays - today()
                     )
                 }
+                retirarAvisosDe(habitId)
                 refreshStreak(habitId)
+                // VitaPuntos reales tras borrar el registro (el backend retira los 10 del cumplimiento).
                 refreshPuntos()
                 showMessage("Registro deshecho")
             }
@@ -590,22 +619,72 @@ class ChecklistViewModel(
             refreshStreak(habitId)
         }
         if (record.cumplido) {
-            // Quien llama solo escribe si el hábito no estaba hecho: aquí acaba de completarse.
-            card(habitId)?.let { showMessage("¡${it.habit.nombre} listo! +10 VitaPuntos") }
             // Volvió a cumplir el hábito: empieza una racha nueva y el aviso de racha perdida ya no aplica.
             _uiState.value.rachaPerdida?.let { aviso ->
                 if (habitId in aviso.habitIds) _uiState.value = _uiState.value.copy(rachaPerdida = null)
             }
         }
+        val puntosAntes = _uiState.value.puntos?.puntos_totales
         refreshPuntos()
+        // VitaPuntos reales del registro: diferencia de `puntos_totales` menos los bonos de medallas nuevas.
+        val bonos = record.logros_desbloqueados.orEmpty().sumOf { it.puntos_bonus }
+        val puntosHabito = _uiState.value.puntos?.puntos_totales
+            ?.let { ahora -> puntosAntes?.let { ahora - it - bonos } }
+            ?.takeIf { it > 0 }
         // Solo cuando el backend confirma que la racha del usuario subió (no por cada hábito).
         val rachaUsuarioAhora = _uiState.value.bestCurrentStreak
-        if (record.cumplido && rachaUsuarioAhora > rachaUsuarioAntes) {
-            avisarNuevoDiaDeRacha(record.dia ?: today().toString(), rachaUsuarioAhora)
+        val mostroRacha = record.cumplido && rachaUsuarioAhora > rachaUsuarioAntes &&
+            avisarNuevoDiaDeRacha(record.dia ?: today().toString(), rachaUsuarioAhora, puntosHabito)
+        if (record.cumplido && !mostroRacha) {
+            // HAL-12: felicitación con el estilo del modal de racha (antes era un toast).
+            // Quien llama solo escribe si el hábito no estaba hecho: aquí acaba de completarse.
+            card(habitId)?.let {
+                _uiState.value = _uiState.value.copy(puntosGanados = PuntosGanadosUi(it.habit.nombre, puntosHabito))
+            }
+        }
+        if (record.cumplido && card(habitId)?.nota == null) {
+            // Ventana opcional para describir cómo le fue; el hábito ya cuenta.
+            _uiState.value = _uiState.value.copy(notaSugerida = habitId)
+        }
+        // Medallas que ganó este registro: si se desmarca enseguida, sus avisos pendientes se retiran.
+        record.logros_desbloqueados?.takeIf { it.isNotEmpty() }?.let { logros ->
+            logrosDelRegistro[habitId] = logros.map { it.id }.toSet()
         }
         if (record.cumplido || !record.logros_desbloqueados.isNullOrEmpty()) {
             detectNewLogros(record.logros_desbloqueados.orEmpty())
         }
+    }
+
+    private val logrosDelRegistro = mutableMapOf<Int, Set<Int>>()
+
+    /** "Ahora no" o después de guardar la nota sugerida: siguen las celebraciones. */
+    fun dismissNotaSugerida() {
+        _uiState.value = _uiState.value.copy(notaSugerida = null)
+    }
+
+    /**
+     * Al desmarcar, se retiran los avisos de ese registro que aún no se habían
+     * visto (puntos, racha, nota sugerida y las medallas que ganó).
+     */
+    private fun retirarAvisosDe(habitId: Int) {
+        val s = _uiState.value
+        val nombre = card(habitId)?.habit?.nombre
+        val ids = logrosDelRegistro.remove(habitId).orEmpty()
+        celebrationQueue.removeAll { it.id in ids }
+        _uiState.value = s.copy(
+            puntosGanados = s.puntosGanados?.takeIf { it.habito != nombre },
+            rachaSumada = null,
+            notaSugerida = s.notaSugerida?.takeIf { it != habitId },
+            logroCelebrado = s.logroCelebrado?.takeIf { it.id !in ids },
+            logrosResumen = s.logrosResumen?.filter { it.id !in ids }?.takeIf { it.isNotEmpty() }
+        )
+    }
+
+    /** "¡Genial!", la X o los 3 s: cierra la felicitación de puntos y sigue con las medallas pendientes. */
+    fun dismissPuntos() {
+        _uiState.value = _uiState.value.copy(puntosGanados = null)
+        val s = _uiState.value
+        if (s.logroCelebrado == null && s.logrosResumen == null && s.rachaSumada == null) showNextCelebration()
     }
 
     // ---------------------------------------------------------------------
@@ -620,17 +699,20 @@ class ChecklistViewModel(
      * guardada por usuario en [StreakNoticeStore], así no se repite aunque se
      * completen más hábitos ese día o se reabra la app.
      */
-    private suspend fun avisarNuevoDiaDeRacha(dia: String, dias: Int) = rachaDiaMutex.withLock {
+    /** true si mostró el modal (false si ya se había mostrado hoy). */
+    private suspend fun avisarNuevoDiaDeRacha(dia: String, dias: Int, puntos: Int?): Boolean = rachaDiaMutex.withLock {
         val key = "racha_dia|$dia"
-        if (key in streakNotices.dismissed()) return@withLock
+        if (key in streakNotices.dismissed()) return@withLock false
         streakNotices.dismiss(key)
-        _uiState.value = _uiState.value.copy(rachaSumada = RachaSumadaUi(dias))
+        _uiState.value = _uiState.value.copy(rachaSumada = RachaSumadaUi(dias, puntos))
+        true
     }
 
     /** Botón "¡Genial!" (o tocar fuera): cierra el modal y, si hay, muestra la medalla pendiente. */
     fun dismissRachaSumada() {
         _uiState.value = _uiState.value.copy(rachaSumada = null)
-        if (_uiState.value.logroCelebrado == null) showNextCelebration()
+        val s = _uiState.value
+        if (s.logroCelebrado == null && s.logrosResumen == null && s.puntosGanados == null) showNextCelebration()
     }
 
     private suspend fun refreshStreak(habitId: Int) {
@@ -685,17 +767,32 @@ class ChecklistViewModel(
             val antiguas = catalogo.filter { it.obtenido && it.id !in candidatos }.map { it.id }
             celebrationStore.markCelebrated(nuevos.map { it.id } + antiguas)
             celebrationQueue.addAll(nuevos)
-            // Si está visible el aviso de racha, la medalla se muestra al terminar ese aviso.
-            if (_uiState.value.logroCelebrado == null && _uiState.value.rachaSumada == null) showNextCelebration()
+            // Si está visible el aviso de racha o de puntos, la medalla se muestra al terminar ese aviso.
+            val s = _uiState.value
+            if (s.logroCelebrado == null && s.logrosResumen == null && s.rachaSumada == null && s.puntosGanados == null) {
+                showNextCelebration()
+            }
         }
     }
 
+    /**
+     * HAL-18: las medallas van en cola (una a la vez, cada una se cierra sola a
+     * los 3 s o con la X). Si hay más de dos pendientes juntas se muestra un
+     * solo resumen ("Ganaste N logros") con "Ver mis logros".
+     */
     private fun showNextCelebration() {
-        _uiState.value = _uiState.value.copy(logroCelebrado = celebrationQueue.removeFirstOrNull())
+        if (celebrationQueue.size > 2) {
+            val todas = celebrationQueue.toList()
+            celebrationQueue.clear()
+            _uiState.value = _uiState.value.copy(logroCelebrado = null, logrosResumen = todas)
+            return
+        }
+        _uiState.value = _uiState.value.copy(logroCelebrado = celebrationQueue.removeFirstOrNull(), logrosResumen = null)
     }
 
     /** Cierra la celebración actual y muestra la siguiente medalla, si hay. */
     fun dismissCelebration() {
+        _uiState.value = _uiState.value.copy(logroCelebrado = null, logrosResumen = null)
         showNextCelebration()
     }
 }

@@ -63,14 +63,58 @@ class UserRepository {
      */
     suspend fun saveReminder(habitId: Int, hora: String): SaveReminderResult = try {
         val existing = ApiClient.userApi.listReminders().firstOrNull { it.habito_id == habitId }
-        SaveReminderResult.Success(
-            if (existing == null) ApiClient.userApi.createReminder(CreateReminderRequest(habitId, hora))
+        val saved = if (existing == null) ApiClient.userApi.createReminder(CreateReminderRequest(habitId, hora))
             else if (existing.hora == hora) existing
             else ApiClient.userApi.updateReminder(existing.id, UpdateReminderRequest(hora))
-        )
+        // La alarma del teléfono se mueve a la nueva hora enseguida.
+        com.vitta.app.data.reminders.ReminderScheduler.actualizar(saved)
+        SaveReminderResult.Success(saved)
     } catch (e: HttpException) {
         SaveReminderResult.Error("No se pudo guardar la hora del recordatorio (${e.code()})")
     } catch (e: Exception) {
         SaveReminderResult.Error("No se pudo conectar para guardar la hora del recordatorio.")
     }
+
+    /** HAL-20: activar/pausar el aviso (`PATCH /api/recordatorios/:id {activo}`) o cambiar su hora. */
+    suspend fun updateReminder(id: Int, hora: String? = null, activo: Boolean? = null): SaveReminderResult = try {
+        val saved = ApiClient.userApi.updateReminder(id, UpdateReminderRequest(hora = hora, activo = activo))
+        com.vitta.app.data.reminders.ReminderScheduler.actualizar(saved)
+        SaveReminderResult.Success(saved)
+    } catch (e: HttpException) {
+        SaveReminderResult.Error("No se pudo actualizar el recordatorio (${e.code()})")
+    } catch (e: Exception) {
+        SaveReminderResult.Error("No se pudo conectar.")
+    }
+
+    /** Historial real de VitaPuntos (`GET /api/points/me/movements`). */
+    /** Borra el recordatorio en el backend y cancela su alarma en el teléfono. */
+    suspend fun deleteReminder(id: Int, habitId: Int): DeleteReminderResult = try {
+        val response = ApiClient.userApi.deleteReminder(id)
+        if (response.isSuccessful) {
+            com.vitta.app.data.reminders.ReminderScheduler.quitar(habitId)
+            DeleteReminderResult.Success
+        } else {
+            DeleteReminderResult.Error("No se pudo borrar el recordatorio (${response.code()})")
+        }
+    } catch (e: Exception) {
+        DeleteReminderResult.Error("No se pudo conectar.")
+    }
+
+    suspend fun listMovements(): MovementsResult = try {
+        MovementsResult.Success(ApiClient.userApi.listMovements())
+    } catch (e: HttpException) {
+        MovementsResult.Error("No se pudo cargar tu historial (${e.code()})")
+    } catch (e: Exception) {
+        MovementsResult.Error("No se pudo conectar.")
+    }
+}
+
+sealed class DeleteReminderResult {
+    data object Success : DeleteReminderResult()
+    data class Error(val message: String) : DeleteReminderResult()
+}
+
+sealed class MovementsResult {
+    data class Success(val movements: List<com.vitta.app.data.remote.dto.PointMovementDto>) : MovementsResult()
+    data class Error(val message: String) : MovementsResult()
 }

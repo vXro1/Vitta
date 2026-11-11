@@ -35,10 +35,28 @@ fun MainScreen(
     userEmail: String?,
     refreshRequests: Int,
     onAddHabit: () -> Unit,
-    onEditHabit: (Int) -> Unit,
+    onOpenHabit: (Int) -> Unit,
     onOpenHelp: () -> Unit,
+    onOpenMyHabits: () -> Unit,
+    onOpenJournal: () -> Unit,
+    onOpenNotifications: () -> Unit,
+    onOpenAccount: () -> Unit,
     onLogout: () -> Unit
 ) {
+    // HAL-20: en Android 13+ se pide una vez el permiso para mostrar los recordatorios.
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val permisoLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
+    ) { }
+    LaunchedEffect(Unit) {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU &&
+            androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS) !=
+            android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) {
+            permisoLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
+
     var tab by rememberSaveable { mutableStateOf(VittaDestination.Home) }
     val checklistViewModel: ChecklistViewModel = viewModel()
     val profileViewModel: ProfileViewModel = viewModel()
@@ -64,15 +82,7 @@ fun MainScreen(
 
     Scaffold(
         containerColor = VittaColorRoles.background,
-        snackbarHost = {
-            SnackbarHost(snackbarHostState) { data ->
-                Snackbar(
-                    snackbarData = data,
-                    containerColor = VittaColorRoles.toastSurface,
-                    contentColor = VittaColorRoles.toastOnSurface
-                )
-            }
-        },
+        snackbarHost = { com.vitta.app.ui.common.VittaSnackbarHost(snackbarHostState) },
         bottomBar = {
             VittaBottomNavBar(
                 selected = tab,
@@ -96,15 +106,16 @@ fun MainScreen(
                     userName = userName,
                     viewModel = checklistViewModel,
                     onAddHabit = onAddHabit,
-                    onEditHabit = onEditHabit,
-                    onVerLogros = verLogros
+                    onOpenHabit = onOpenHabit,
+                    onVerLogros = verLogros,
+                    onOpenNotifications = onOpenNotifications
                 )
             }
             VittaDestination.Today -> Box(modifier) {
                 TodayScreen(
                     viewModel = checklistViewModel,
                     onAddHabit = onAddHabit,
-                    onEditHabit = onEditHabit,
+                    onOpenHabit = onOpenHabit,
                     onVerLogros = verLogros
                 )
             }
@@ -121,6 +132,10 @@ fun MainScreen(
                     onAddHabit = onAddHabit,
                     onOpenHelp = onOpenHelp,
                     onOpenAchievements = verLogros,
+                    onOpenMyHabits = onOpenMyHabits,
+                    onOpenJournal = onOpenJournal,
+                    onOpenNotifications = onOpenNotifications,
+                    onOpenAccount = onOpenAccount,
                     onLogout = onLogout,
                     viewModel = profileViewModel
                 )
