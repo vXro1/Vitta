@@ -17,24 +17,26 @@ marfil; ver README_COLORES.md).
 > correrla contra el backend, usuarios de prueba, arquitectura,
 > navegación, reglas de código y checklist de pruebas.
 
-## Estado actual (octubre 2026)
+## Pantallas (noviembre 2026)
 
-La app ya no es solo el sistema de diseño: tiene pantallas reales
-conectadas al backend (`../Vitta-Plataforma-Web-de-Gesti-n-de-H-bitos-y-Gamificaci-n`):
+Todas usan datos reales del backend (`../Vitta-Plataforma-Web-de-Gesti-n-de-H-bitos-y-Gamificaci-n`).
 
-- Onboarding, Login y Registro (JWT).
-- Selección de hábitos predefinidos, creación y **edición** de hábitos
-  (meta con cantidad + unidad, frecuencia, selector de hora, catálogo de
-  iconos de Icons8 con búsqueda).
-- Inicio (dashboard con progreso, rachas, avance parcial, notas del día y
-  celebraciones), **Hoy** (checklist por momento del día), **Progreso**
-  (gráficas y mapa de calor), **Logros** (medallas con su avance) y **Perfil**
-  (nivel, VitaPuntos y estadísticas reales).
-- Tipografía **Nunito** en toda la app y la paleta de marca (verde oliva, terracota y marfil).
+| Pantalla | Dónde está | Qué hace |
+|---|---|---|
+| Onboarding, Login, Registro | Al abrir sin sesión | Sesión con JWT |
+| Selección y configuración de hábitos | Inicio → agregar | Hábitos predefinidos o personalizados, meta, frecuencia y hora del recordatorio |
+| Inicio y Hoy | Barra inferior | Checklist del día, avance parcial, notas, puntos y racha que se actualizan al marcar |
+| Detalle de hábito | Tocar un hábito | Avance, racha y registros del hábito; editar |
+| Progreso | Barra inferior | Gráficas semanal/mensual y mapa de calor |
+| Logros | Barra inferior | Las 14 medallas con su avance |
+| Perfil (Yo) | Barra inferior | Nivel, VitaPuntos, estadísticas y fecha de registro |
+| Cuenta | Yo → Cuenta | Cambiar nombre, correo y contraseña |
+| Mis hábitos | Yo → Mis hábitos | Activos y archivados; archivar y restaurar |
+| Bitácora (diario) | Yo → Bitácora | Notas por hábito y generales |
+| Notificaciones | Yo → Notificaciones | Recordatorios (cambiar hora, pausar, borrar) e historial de puntos y medallas |
+| Ayuda | Yo → Ayuda | Cómo crear hábitos, avance parcial, puntos y logros |
 
-Integración de las ramas de Valentina y Verónica con el backend nuevo
-(zona horaria, íconos, notas, logros automáticos, recordatorios):
-ver **README_INTEGRACION.md**.
+Los recordatorios llegan como notificación del teléfono (AlarmManager) aunque la app esté cerrada.
 
 ## Tecnologías
 
@@ -77,15 +79,54 @@ Vita App/
 
 ## Cómo ejecutar
 
-Ver **README_INSTALACION.md** para el paso a paso completo (requisitos,
-JDK, SDK, emulador, dispositivo físico y problemas comunes).
+### 1. Levantar el backend
 
-Resumen rápido:
+En el repo del backend (detalles en su README):
 
 ```bash
-./gradlew :app:assembleDebug
-./gradlew :app:installDebug   # con un emulador/dispositivo conectado
+cp .env.example .env     # poner DATABASE_URL, JWT_SECRET y NODE_ENV=development
+npm install
+npm run migrate          # tablas + 14 logros + plantillas
+npm run seed             # opcional: usuarios demo
+npm run dev              # http://localhost:3000
 ```
 
-O simplemente abrir la carpeta `Vita App/` en Android Studio y presionar
-Run ▶ sobre el módulo `app`.
+### 2. URL del servidor
+
+La URL sale de `BuildConfig.BASE_URL` (se arma en `app/build.gradle.kts`). Se cambia en
+`local.properties` (no se sube a git) o con `-P` al compilar:
+
+| Build | Propiedad | Por defecto |
+|---|---|---|
+| debug | `vitta.debugBaseUrl` | `http://10.0.2.2:3000/api/` (emulador) |
+| release | `vitta.baseUrl` | `https://CAMBIAR-URL/api/` (hay que cambiarla) |
+
+Ejemplo de `local.properties` para probar en un celular conectado al mismo wifi que el PC:
+
+```properties
+sdk.dir=C:/Users/TU-USUARIO/AppData/Local/Android/Sdk
+vitta.debugBaseUrl=http://192.168.1.10:3000/api/
+```
+
+(la IP es la del PC, se ve con `ipconfig`). En debug se permite HTTP; en release solo HTTPS.
+
+### 3. Compilar e instalar
+
+```bash
+./gradlew assembleDebug        # app/build/outputs/apk/debug/app-debug.apk
+./gradlew installDebug         # con un emulador o celular conectado
+```
+
+O abrir la carpeta en Android Studio y presionar Run ▶ sobre `app`.
+
+Para instalar el APK a mano en un celular: copiar el `.apk`, abrirlo y permitir
+"instalar apps de origen desconocido". El APK de release firmado se explica en
+**README_INSTALACION.md** (sección 7).
+
+### Cuenta demo (solo debug)
+
+El botón "Entrar con la cuenta demo" solo aparece en debug y si en `local.properties`
+está `vitta.demoPassword=...` (la contraseña no está en el código). La primera vez crea
+`demo@vitta.test` con esa contraseña y le carga hábitos de ejemplo. En release el botón no existe.
+
+Requisitos y problemas comunes: **README_INSTALACION.md**.

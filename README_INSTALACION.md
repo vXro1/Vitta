@@ -81,6 +81,9 @@ Este comando fue verificado y produce `BUILD SUCCESSFUL` en este proyecto.
    depuración que aparece en el teléfono.
 4. Verifica que Android Studio (o `adb devices`) lo detecte, y presiona
    Run ▶ igual que con el emulador.
+5. El celular no ve `10.0.2.2`: pon la IP de tu PC en `local.properties`
+   (`vitta.debugBaseUrl=http://IP-DE-TU-PC:3000/api/`), con el celular y el
+   PC en la misma red.
 
 ## 7. APK de release firmado
 
